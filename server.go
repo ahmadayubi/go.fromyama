@@ -24,7 +24,8 @@ func CreateRoutes() *chi.Mux{
 		middleware.Recoverer,
 		)
 	router.Route("/", func(r chi.Router){
-		r.Mount("/user", routes.Routes())
+		r.Mount("/user", routes.UserRoutes())
+		r.Mount("/company", routes.CompanyRoutes())
 	})
 	return router
 }

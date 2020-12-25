@@ -31,12 +31,18 @@ func GenToken(user TokenClaims) (string, error){
 	return tokenString, nil
 }
 
-func CheckAndParseToken(tokenString string) (string, error){
+func CheckAndParseToken(tokenString string) (TokenClaims, error){
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("JWT_SECRET")), nil
 	})
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid{
-		return claims["email"].(string), nil
+		tokenClaims := TokenClaims{
+			Email: claims["email"].(string),
+			UserID: claims["user_id"].(string),
+			CompanyID: claims["company_id"].(string),
+			Approved: claims["approved"].(bool),
+		}
+		return tokenClaims, nil
 	}
-	return "", err
+	return TokenClaims{}, err
 }
