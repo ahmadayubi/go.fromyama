@@ -22,6 +22,7 @@ func CreateRoutes() *chi.Mux{
 		middleware.Logger,
 		middleware.RedirectSlashes,
 		middleware.Recoverer,
+		middleware.Throttle(20), // limit due to connections the database allows
 		)
 	router.Route("/", func(r chi.Router){
 		r.Mount("/user", routes.UserRoutes())

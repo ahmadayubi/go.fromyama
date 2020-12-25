@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
 
 	"../utils"
@@ -30,8 +28,8 @@ type UserDetails struct {
 }
 
 
-const createUserSql = "INSERT INTO users(name, email, password, company_id) VALUES ($1, $2, $3, $4) RETURNING id;"
-const addToCompanySql = "UPDATE companies SET employees = array_append(employees, $1) WHERE id = $2"
+const createUserSql = "INSERT INTO users(name, email, password, company_id, is_approved, is_head) VALUES ($1, $2, $3, $4, $5, $6); INSERT INTO employees(company_id, user_id) VALUES ($4, (SELECT DISTINCT id FROM users WHERE email = $2)) RETURNING user_id;"
+const addEmployee = "INSERT INTO employees(company_id, user_id) VALUES ($1, $2)"
 
 const loginUserSql = "SELECT id, company_id, password, is_approved FROM users WHERE email = $1"
 
@@ -39,59 +37,24 @@ const getUserDetailSql = "SELECT c.id, u.email, u.name as name, c.company_name, 
 
 func SignUpUser(w http.ResponseWriter, r *http.Request){
 	var body map[string]string
-
-	reqBody, err := ioutil.ReadAll(r.Body)
-
-	if err = json.Unmarshal(reqBody,&body);err != nil {
-		utils.ErrorResponse(w, err)
-		return
-	}
-
-	// Database requests
-	userCreateQuery, err := database.DB.Prepare(createUserSql)
+	err := utils.ParseRequestBody(r, &body)
 	if err != nil{
-		 utils.ErrorResponse(w, err)
-		 return
-	}
-	hashByte, err := bcrypt.GenerateFromPassword([]byte(body["password"]), 10)
-	if err != nil {
 		utils.ErrorResponse(w, err)
 		return
 	}
-	var userIdString string
-	err = userCreateQuery.QueryRow(body["name"], body["email"], string(hashByte), body["company_id"]).Scan(&userIdString)
-	if err != nil {
-		utils.ErrorResponse(w, err)
-		return
-	}
-	addToCompanyQuery, err := database.DB.Prepare(addToCompanySql)
-	_, err = addToCompanyQuery.Exec(userIdString, body["company_id"])
+	_, token, err := SignUpUserAndGenerateToken(w, false,false, body["name"], body["email"], body["password"], body["company_id"])
 	if err != nil {
 		utils.ErrorResponse(w, err)
 		return
 	}
 
-	tokenClaims := jwtUtil.TokenClaims{
-		Email: body["email"],
-		UserID: userIdString,
-		CompanyID: body["company_id"],
-		Approved: false,
-	}
-
-	token, err := jwtUtil.GenToken(tokenClaims)
-	if err != nil {
-		utils.ErrorResponse(w, err)
-		return
-	}
-
-	utils.JSONResponse(w, http.StatusAccepted, Token{Raw: token})
+	utils.JSONResponse(w, http.StatusAccepted, token)
 }
 
 func LoginUser(w http.ResponseWriter, r *http.Request){
 	var body map[string]string
-	reqBody, err := ioutil.ReadAll(r.Body)
-
-	if err = json.Unmarshal(reqBody,&body);err != nil {
+	err := utils.ParseRequestBody(r, &body)
+	if err != nil{
 		utils.ErrorResponse(w, err)
 		return
 	}
@@ -131,7 +94,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	utils.JSONResponse(w, http.StatusAccepted, Token{Raw: token})
+	utils.JSONResponse(w, http.StatusAccepted, token)
 }
 
 func GetUserDetails(w http.ResponseWriter, r *http.Request){
@@ -156,4 +119,43 @@ func ComparePassword(hash, password string, c chan bool){
 		c <- false
 	}
 	c <- true
+}
+
+func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,name, email, password, companyID string) (string, string, error) {
+	userCreateQuery, err := database.DB.Prepare(createUserSql)
+	if err != nil{
+		utils.ErrorResponse(w, err)
+		return "", "", err
+	}
+	hashByte, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return "", "", err
+	}
+	var userIdString string
+	err = userCreateQuery.QueryRow(name, email, string(hashByte), companyID, approved, isHead).Scan(&userIdString)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return "", "", err
+	}
+	addEmployeeQuery, err := database.DB.Prepare(addEmployee)
+	_, err = addEmployeeQuery.Exec(companyID, userIdString)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return "", "", err
+	}
+
+	tokenClaims := jwtUtil.TokenClaims{
+		Email: email,
+		UserID: userIdString,
+		CompanyID: companyID,
+		Approved: approved,
+	}
+
+	token, err := jwtUtil.GenToken(tokenClaims)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return "", "", err
+	}
+	return userIdString, token, nil
 }

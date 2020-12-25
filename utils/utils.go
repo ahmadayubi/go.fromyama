@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -56,4 +57,13 @@ func JSONResponse(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	w.Write(buf.Bytes())
+}
+
+func ParseRequestBody (r *http.Request, body *map[string]string) error {
+	reqBody, err := ioutil.ReadAll(r.Body)
+	if err = json.Unmarshal(reqBody, body);err != nil {
+		return err
+	}
+
+	return nil
 }
