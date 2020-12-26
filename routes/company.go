@@ -10,19 +10,19 @@ import (
 func CompanyRoutes() *chi.Mux{
 	router:= chi.NewRouter()
 	router.Post("/register", controllers.RegisterCompany)
-	router.With(middleware.ProtectedRoute).Get("/employee/all", controllers.GetAllEmployeeDetails)
+	router.With(middleware.ProtectedApprovedUserRoute).Get("/employee/all", controllers.GetAllEmployeeDetails)
 
-	router.With(middleware.ProtectedRoute).Post("/employee/approve/{employeeID}", controllers.LoginUser)
-	router.With(middleware.ProtectedRoute).Get("/employee/approved/{employeeID}",controllers.GetUserDetails)
-	router.With(middleware.ProtectedRoute).Get("/details", controllers.GetUserDetails)
+	router.With(middleware.ProtectedApprovedUserRoute).Put("/employee/approve/{employeeID}", controllers.ApproveEmployee)
+	router.With(middleware.ProtectedApprovedUserRoute).Get("/employee/approved/{employeeID}",controllers.IsEmployeeApproved)
+	router.With(middleware.ProtectedApprovedUserRoute).Get("/details", controllers.GetCompanyDetails)
 
-	router.With(middleware.ProtectedRoute).Post("/payment/add", controllers.GetUserDetails)
-	router.With(middleware.ProtectedRoute).Post("/payment/charge", controllers.GetUserDetails)
+	router.With(middleware.ProtectedApprovedUserRoute).Post("/add/payment/method", controllers.AddPaymentMethod)
+	router.With(middleware.ProtectedApprovedUserRoute).Post("/add/payment/charge", controllers.ChargePaymentAccount)
 
-	router.With(middleware.ProtectedRoute).Post("/parcel/add", controllers.GetUserDetails)
-	router.With(middleware.ProtectedRoute).Get("/shipper", controllers.GetUserDetails)
+	router.With(middleware.ProtectedApprovedUserRoute).Post("/add/parcel", controllers.GetUserDetails)
+	router.With(middleware.ProtectedApprovedUserRoute).Get("/shipper", controllers.GetUserDetails)
 
-	router.With(middleware.ProtectedRoute).Delete("/unregister",controllers.GetUserDetails)
+	router.With(middleware.ProtectedApprovedUserRoute).Delete("/unregister",controllers.GetUserDetails)
 	return router
 }
 
