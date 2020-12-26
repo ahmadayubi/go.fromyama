@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
 	"../utils"
 	"../utils/database"
@@ -28,7 +29,7 @@ type UserDetails struct {
 }
 
 
-const createUserSql = "INSERT INTO users(name, email, password, company_id, is_approved, is_head) VALUES ($1, $2, $3, $4, $5, $6); INSERT INTO employees(company_id, user_id) VALUES ($4, (SELECT DISTINCT id FROM users WHERE email = $2)) RETURNING user_id;"
+const createUserSql = "INSERT INTO users(name, email, password, company_id, is_approved, is_head) VALUES ($1, $2, $3, $4, $5, $6);"
 const addEmployee = "INSERT INTO employees(company_id, user_id) VALUES ($1, $2)"
 
 const loginUserSql = "SELECT id, company_id, password, is_approved FROM users WHERE email = $1"
@@ -42,13 +43,18 @@ func SignUpUser(w http.ResponseWriter, r *http.Request){
 		utils.ErrorResponse(w, err)
 		return
 	}
+	if body["email"] == "" || body["name"] == "" || body["company_name"] == "" || body["password"] == "" {
+		utils.JSONResponse(w, http.StatusBadRequest, "Missing Parameter(s)")
+		return
+	}
+
 	_, token, err := SignUpUserAndGenerateToken(w, false,false, body["name"], body["email"], body["password"], body["company_id"])
 	if err != nil {
 		utils.ErrorResponse(w, err)
 		return
 	}
 
-	utils.JSONResponse(w, http.StatusAccepted, token)
+	utils.JSONResponse(w, http.StatusCreated, token)
 }
 
 func LoginUser(w http.ResponseWriter, r *http.Request){
@@ -60,6 +66,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request){
 	}
 
 	query, err := database.DB.Prepare(loginUserSql)
+	defer query.Close()
 	if err != nil{
 		utils.ErrorResponse(w, err)
 		return
@@ -99,6 +106,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request){
 
 func GetUserDetails(w http.ResponseWriter, r *http.Request){
 	query, err := database.DB.Prepare(getUserDetailSql)
+	defer query.Close()
 	claims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	if err != nil{
 		utils.ErrorResponse(w, err)
@@ -123,6 +131,7 @@ func ComparePassword(hash, password string, c chan bool){
 
 func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,name, email, password, companyID string) (string, string, error) {
 	userCreateQuery, err := database.DB.Prepare(createUserSql)
+	defer userCreateQuery.Close()
 	if err != nil{
 		utils.ErrorResponse(w, err)
 		return "", "", err
@@ -139,6 +148,7 @@ func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,nam
 		return "", "", err
 	}
 	addEmployeeQuery, err := database.DB.Prepare(addEmployee)
+	defer addEmployeeQuery.Close()
 	_, err = addEmployeeQuery.Exec(companyID, userIdString)
 	if err != nil {
 		utils.ErrorResponse(w, err)
@@ -158,4 +168,27 @@ func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,nam
 		return "", "", err
 	}
 	return userIdString, token, nil
+}
+
+func RefreshToken(w http.ResponseWriter, r *http.Request){
+	var body map[string]string
+	err := utils.ParseRequestBody(r, &body)
+	approved, err := strconv.ParseBool(body["is_approved"])
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+	tokenClaims := jwtUtil.TokenClaims{
+		Email: body["email"],
+		UserID: body["user_id"],
+		CompanyID: body["company_id"],
+		Approved: approved,
+	}
+
+	token, err := jwtUtil.GenToken(tokenClaims)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+	utils.JSONResponse(w, http.StatusAccepted, token)
 }

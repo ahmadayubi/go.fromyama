@@ -12,6 +12,10 @@ import (
 func ProtectedRoute(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqToken := r.Header.Get("Authorization")
+		if reqToken == ""{
+			utils.ForbiddenResponse(w)
+			return
+		}
 		token := strings.Split(reqToken, "Bearer ")[1]
 		claims, err := jwtUtil.CheckAndParseToken(token)
 		if err != nil {
