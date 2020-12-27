@@ -23,6 +23,11 @@ const isEmployeeApprovedSql = "SELECT is_approved, company_id FROM users WHERE i
 const getCompanyDetailSql = "SELECT company_name, head_id, total_due, street, city, province_code, country, postal_code, phone FROM companies WHERE id = $1"
 const addPaymentMethodSql = "UPDATE companies SET payment_account_id = $1 WHERE id = $2"
 const getPaymentMethodSql = "SELECT payment_account_id FROM companies WHERE id = $1"
+const addParcelSql = "INSERT INTO parcel_options (company_id, length, width, height, name) VALUES ($1, $2, $3, $4, $5)"
+const getParcelSql = "SELECT name, length, width, height FROM parcel_options WHERE company_id = $1"
+const getShippingInfoSql = "SELECT company_name, street, city, province_code, country, postal_code, phone FROM companies where id = $1"
+const isEmployeeHeadSql = "SELECT is_head FROM users WHERE id = $1"
+const unregisterCompanySql = "DELETE FROM companies WHERE id = $1"
 
 type Employee struct {
 	Name string `json:"name"`
@@ -31,16 +36,33 @@ type Employee struct {
 	ID string `json:"id"`
 }
 
-type Company struct {
-	CompanyName string `json:"company_name"`
-	HeadID string `json:"head_id"`
-	TotalDue float64 `json:"total_due"`
+type Address struct {
+	ShipperName string `json:"shipper"`
 	Street string `json:"street"`
 	City string `json:"city"`
 	ProvinceCode string `json:"province_code"`
 	Country string `json:"country"`
 	PostalCode string `json:"postal_code"`
 	Phone int `json:"phone"`
+}
+
+type Company struct {
+	CompanyName string `json:"company_name"`
+	HeadID string `json:"head_id"`
+	TotalDue float64 `json:"total_due"`
+	Address Address `json:"address"`
+}
+
+type Parcel struct {
+	Name string `json:"name"`
+	Length string `json:"length"`
+	Width string `json:"width"`
+	Height string `json:"height"`
+}
+
+type Shipper struct {
+	Address Address `json:"address"`
+	Parcels []Parcel `json:"parcels"`
 }
 
 func GetAllEmployeeDetails (w http.ResponseWriter, r *http.Request){
@@ -68,15 +90,9 @@ func GetAllEmployeeDetails (w http.ResponseWriter, r *http.Request){
 
 func RegisterCompany (w http.ResponseWriter, r *http.Request){
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body)
+	err := utils.ParseRequestBody(r, &body,[]string{"email", "name", "company_name", "password", "street", "city", "province_code", "country", "postal_code", "phone"})
 	if err != nil{
 		utils.ErrorResponse(w, err)
-		return
-	}
-	if body["email"] == "" || body["name"] == "" || body["company_name"] == "" || body["password"] == "" ||
-		body["street"] == "" || body["city"] == "" || body["province_code"] == "" || body["country"] == "" ||
-		body["postal_code"] == "" || body["phone"] == "" {
-		utils.JSONResponse(w, http.StatusBadRequest, "Missing Parameter(s)")
 		return
 	}
 
@@ -164,7 +180,9 @@ func GetCompanyDetails (w http.ResponseWriter, r *http.Request){
 	}
 
 	var c Company
-	err = companyDetailsQuery.QueryRow(tokenClaims.CompanyID).Scan(&c.CompanyName, &c.HeadID, &c.TotalDue, &c.Street, &c.City, &c.ProvinceCode, &c.Country, &c.PostalCode, &c.Phone)
+	err = companyDetailsQuery.QueryRow(tokenClaims.CompanyID).Scan(&c.CompanyName, &c.HeadID,
+		&c.TotalDue, &c.Address.Street, &c.Address.City, &c.Address.ProvinceCode,
+		&c.Address.Country, &c.Address.PostalCode, &c.Address.Phone)
 	if err != nil {
 		utils.ErrorResponse(w, err)
 		return
@@ -175,7 +193,7 @@ func GetCompanyDetails (w http.ResponseWriter, r *http.Request){
 func AddPaymentMethod (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body)
+	err := utils.ParseRequestBody(r, &body, nil)
 	if err != nil{
 		utils.ErrorResponse(w, err)
 		return
@@ -190,7 +208,7 @@ func AddPaymentMethod (w http.ResponseWriter, r *http.Request){
 		Token: &pToken,
 	}
 
-	stripe.Key = os.Getenv("SHOP_API_KEY")
+	stripe.Key = os.Getenv("STRIPE_SECRET")
 	params := &stripe.CustomerParams{
 		Source: &source,
 		Description: stripe.String(tokenClaims.UserID),
@@ -215,7 +233,7 @@ func AddPaymentMethod (w http.ResponseWriter, r *http.Request){
 func ChargePaymentAccount (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body)
+	err := utils.ParseRequestBody(r, &body, nil)
 	if err != nil{
 		utils.ErrorResponse(w, err)
 		return
@@ -224,7 +242,7 @@ func ChargePaymentAccount (w http.ResponseWriter, r *http.Request){
 		utils.JSONResponse(w, http.StatusBadRequest, "Missing Amount ")
 		return
 	}
-	stripe.Key = os.Getenv("STRIPE_KEY")
+	stripe.Key = os.Getenv("STRIPE_SECRET")
 
 	var paymentID string
 	getPaymentMethodQuery, err := database.DB.Prepare(getPaymentMethodSql)
@@ -238,7 +256,7 @@ func ChargePaymentAccount (w http.ResponseWriter, r *http.Request){
 
 	params := &stripe.ChargeParams{
 		Amount: stripe.Int64(amount),
-		Currency: stripe.String(string(stripe.CurrencyUSD)),
+		Currency: stripe.String(string(stripe.CurrencyCAD)),
 		Description: stripe.String("Label Purchase"),
 		Customer: stripe.String(paymentID),
 	}
@@ -247,4 +265,80 @@ func ChargePaymentAccount (w http.ResponseWriter, r *http.Request){
 		utils.JSONResponse(w, http.StatusConflict, "Payment Error")
 	}
 	utils.JSONResponse(w, http.StatusAccepted, "Payment Successful")
+}
+
+func AddParcel (w http.ResponseWriter, r *http.Request){
+	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
+	var body map[string]string
+	err := utils.ParseRequestBody(r, &body, nil)
+	if err != nil{
+		utils.ErrorResponse(w, err)
+		return
+	}
+	addParcelQuery, err := database.DB.Prepare(addParcelSql)
+	defer addParcelQuery.Close()
+	_, err = addParcelQuery.Exec(tokenClaims.CompanyID, body["length"], body["width"], body["height"], body["name"])
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+	utils.JSONResponse(w, http.StatusCreated, "Parcel Added")
+}
+
+func GetShipper (w http.ResponseWriter, r *http.Request){
+	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
+
+	getParcelAndShippingQuery, err := database.DB.Prepare(getParcelSql)
+	defer getParcelAndShippingQuery.Close()
+	rows, err := getParcelAndShippingQuery.Query(tokenClaims.CompanyID)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+	var allParcel []Parcel
+	for rows.Next(){
+		var p Parcel
+		err = rows.Scan(&p.Name, &p.Length, &p.Width, &p.Height)
+		allParcel = append(allParcel, p)
+	}
+
+	var a Address
+	getShippingInfoQuery, err := database.DB.Prepare(getShippingInfoSql)
+	defer getShippingInfoQuery.Close()
+	err = getShippingInfoQuery.QueryRow(tokenClaims.CompanyID).Scan(&a.ShipperName, &a.Street, &a.City, &a.ProvinceCode, &a.Country, &a.PostalCode, &a.Phone)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+	shipper := Shipper{
+		Address: a,
+		Parcels: allParcel,
+	}
+	utils.JSONResponse(w, http.StatusOK, shipper)
+}
+
+func UnregisterCompany (w http.ResponseWriter, r *http.Request){
+	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
+
+	var isHead bool
+	isEmployeeHeadQuery, err := database.DB.Prepare(isEmployeeHeadSql)
+	defer isEmployeeHeadQuery.Close()
+	err = isEmployeeHeadQuery.QueryRow(tokenClaims.UserID).Scan(&isHead)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+	if !isHead{
+		utils.JSONResponse(w, http.StatusUnauthorized, "Need To Be Head To Unregister")
+		return
+	}
+
+	unregisterCompanyQuery, err := database.DB.Prepare(unregisterCompanySql)
+	defer unregisterCompanyQuery.Close()
+	_, err = unregisterCompanyQuery.Exec(tokenClaims.CompanyID)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+	utils.JSONResponse(w, http.StatusAccepted, "Company Unregister")
 }

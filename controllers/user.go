@@ -29,8 +29,8 @@ type UserDetails struct {
 }
 
 
-const createUserSql = "INSERT INTO users(name, email, password, company_id, is_approved, is_head) VALUES ($1, $2, $3, $4, $5, $6);"
-const addEmployee = "INSERT INTO employees(company_id, user_id) VALUES ($1, $2)"
+const createUserSql = "INSERT INTO users(name, email, password, company_id, is_approved, is_head) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id"
+const addEmployeeSql = "INSERT INTO employees(company_id, user_id) VALUES ($1, $2)"
 
 const loginUserSql = "SELECT id, company_id, password, is_approved FROM users WHERE email = $1"
 
@@ -38,13 +38,9 @@ const getUserDetailSql = "SELECT c.id, u.email, u.name as name, c.company_name, 
 
 func SignUpUser(w http.ResponseWriter, r *http.Request){
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body)
+	err := utils.ParseRequestBody(r, &body, []string{"email", "name", "company_name", "password"})
 	if err != nil{
 		utils.ErrorResponse(w, err)
-		return
-	}
-	if body["email"] == "" || body["name"] == "" || body["company_name"] == "" || body["password"] == "" {
-		utils.JSONResponse(w, http.StatusBadRequest, "Missing Parameter(s)")
 		return
 	}
 
@@ -59,7 +55,7 @@ func SignUpUser(w http.ResponseWriter, r *http.Request){
 
 func LoginUser(w http.ResponseWriter, r *http.Request){
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body)
+	err := utils.ParseRequestBody(r, &body, nil)
 	if err != nil{
 		utils.ErrorResponse(w, err)
 		return
@@ -147,7 +143,7 @@ func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,nam
 		utils.ErrorResponse(w, err)
 		return "", "", err
 	}
-	addEmployeeQuery, err := database.DB.Prepare(addEmployee)
+	addEmployeeQuery, err := database.DB.Prepare(addEmployeeSql)
 	defer addEmployeeQuery.Close()
 	_, err = addEmployeeQuery.Exec(companyID, userIdString)
 	if err != nil {
@@ -172,7 +168,7 @@ func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,nam
 
 func RefreshToken(w http.ResponseWriter, r *http.Request){
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body)
+	err := utils.ParseRequestBody(r, &body, nil)
 	approved, err := strconv.ParseBool(body["is_approved"])
 	if err != nil {
 		utils.ErrorResponse(w, err)

@@ -12,6 +12,14 @@ type Response struct {
 	Status int32 `json:"status"`
 }
 
+type missingParamError struct {
+	s string
+}
+
+func (e *missingParamError) Error() string{
+	return e.s
+}
+
 func ErrorResponse(w http.ResponseWriter, err error){
 	http.Error(w, err.Error(), http.StatusBadRequest)
 	return
@@ -26,7 +34,8 @@ func ForbiddenResponse(w http.ResponseWriter){
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusForbidden)
 	w.Write(buf.Bytes())
 }
@@ -59,11 +68,20 @@ func JSONResponse(w http.ResponseWriter, status int, v interface{}) {
 	w.Write(buf.Bytes())
 }
 
-func ParseRequestBody (r *http.Request, body *map[string]string) error {
+func ParseRequestBody (r *http.Request, body *map[string]string, needed []string) error {
 	reqBody, err := ioutil.ReadAll(r.Body)
 	if err = json.Unmarshal(reqBody, body);err != nil {
 		return err
 	}
-
+	for key, val := range *body {
+		if val == ""{
+			return &missingParamError{key+" Missing"}
+		}
+	}
+	for i := range needed {
+		if (*body)[needed[i]] == ""{
+			return &missingParamError{needed[i]+" Missing"}
+		}
+	}
 	return nil
 }

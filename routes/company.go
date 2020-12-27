@@ -19,11 +19,9 @@ func CompanyRoutes() *chi.Mux{
 	router.With(middleware.ProtectedApprovedUserRoute).Post("/add/payment/method", controllers.AddPaymentMethod)
 	router.With(middleware.ProtectedApprovedUserRoute).Post("/add/payment/charge", controllers.ChargePaymentAccount)
 
-	router.With(middleware.ProtectedApprovedUserRoute).Post("/add/parcel", controllers.GetUserDetails)
-	router.With(middleware.ProtectedApprovedUserRoute).Get("/shipper", controllers.GetUserDetails)
+	router.With(middleware.ProtectedApprovedUserRoute).Post("/add/parcel", controllers.AddParcel)
+	router.With(middleware.ProtectedApprovedUserRoute).Get("/shipper", controllers.GetShipper)
 
-	router.With(middleware.ProtectedApprovedUserRoute).Delete("/unregister",controllers.GetUserDetails)
+	router.With(middleware.ProtectedApprovedUserRoute).Delete("/unregister",controllers.UnregisterCompany)
 	return router
 }
-
-
