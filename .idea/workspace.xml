@@ -2,15 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="490b717c-c7b9-4c9b-baf7-b1fe880138c4" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.env" beforeDir="false" afterPath="$PROJECT_DIR$/.env" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/ee118b93-5010-44a5-8edf-421f0a9dd257.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/ee118b93-5010-44a5-8edf-421f0a9dd257.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/ee118b93-5010-44a5-8edf-421f0a9dd257/storage_v2/_src_/database/d3gjic8dj3m4ou.TqKSIQ/schema/public.abK9xQ.meta" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/ee118b93-5010-44a5-8edf-421f0a9dd257/storage_v2/_src_/database/d3gjic8dj3m4ou.TqKSIQ/schema/public.abK9xQ.meta" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build/go_build_go_fromyama.exe" beforeDir="false" afterPath="$PROJECT_DIR$/build/go_build_go_fromyama.exe" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/company.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/company.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/postage.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/postage.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/controllers/user.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/user.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/company.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/company.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/utils.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/utils.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -22,6 +19,7 @@
       <list>
         <option value="Go Application" />
         <option value="Go File" />
+        <option value="HTML File" />
       </list>
     </option>
   </component>
@@ -47,6 +45,7 @@
   <component name="PropertiesComponent">
     <property name="DatabaseDriversLRU" value="postgresql" />
     <property name="DefaultGoTemplateProperty" value="Go File" />
+    <property name="DefaultHtmlFileTemplate" value="HTML File" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
@@ -54,8 +53,17 @@
     <property name="configurable.GoLibrariesConfigurable.is.expanded" value="true" />
     <property name="go.import.settings.migrated" value="true" />
     <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../gorest-template" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/assets/templates" />
     <property name="settings.editor.selected.configurable" value="com.goide.configuration.GoLibrariesConfigurableProvider" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\Ahmad\Desktop\Projects\fromyama\go.fromyama\assets\templates" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Ahmad\Desktop\Projects\fromyama\go.fromyama\assets\templates" />
+      <recent name="C:\Users\Ahmad\Desktop\Projects\fromyama\go.fromyama\controllers" />
+    </key>
   </component>
   <component name="RunManager">
     <configuration name="go build go.fromyama" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
@@ -90,8 +98,8 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="DlvLineBreakpoint">
           <url>file://$PROJECT_DIR$/controllers/postage.go</url>
-          <line>98</line>
-          <option name="timeStamp" value="8" />
+          <line>37</line>
+          <option name="timeStamp" value="11" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

@@ -1,7 +1,14 @@
 package controllers
 
 import (
+	"crypto/tls"
+	"encoding/base64"
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/mail"
+	"net/smtp"
+	"os"
 	"strconv"
 
 	"../utils"
@@ -38,7 +45,7 @@ const getUserDetailSql = "SELECT c.id, u.email, u.name as name, c.company_name, 
 
 func SignUpUser(w http.ResponseWriter, r *http.Request){
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body, []string{"email", "name", "company_name", "password"})
+	err := utils.ParseRequestBody(r, &body, []string{"email", "name", "company_id", "password"})
 	if err != nil{
 		utils.ErrorResponse(w, err)
 		return
@@ -163,6 +170,14 @@ func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,nam
 		utils.ErrorResponse(w, err)
 		return "", "", err
 	}
+
+	newUserHTML, err := ioutil.ReadFile("assets/templates/newUser.html")
+	err = SendEmail(email, "Welcome To FromYama", string(newUserHTML), nil)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return "", "", err
+	}
+
 	return userIdString, token, nil
 }
 
@@ -187,4 +202,73 @@ func RefreshToken(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	utils.JSONResponse(w, http.StatusAccepted, token)
+}
+
+func SendEmail(toEmail, subject, body string, attachment []byte) error {
+	fromString := os.Getenv("MAIL_USER")
+	from := mail.Address{"FromYama",fromString}
+	to := mail.Address{"", toEmail}
+
+
+	serverName := "smtppro.zoho.com:465"
+	host := "smtppro.zoho.com"
+
+	emailAuth := smtp.PlainAuth("", fromString, os.Getenv("MAIL_PASS"), host)
+
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true,
+		ServerName: host,
+	}
+
+	conn, err := tls.Dial("tcp", serverName, tlsConfig)
+	if err != nil {
+		return err
+	}
+
+	cli, err := smtp.NewClient(conn, host)
+	defer cli.Close()
+	err = cli.Auth(emailAuth)
+	err = cli.Mail(from.Address)
+	err = cli.Rcpt(to.Address)
+	w, err := cli.Data()
+	if err != nil {
+		return err
+	}
+
+	headers := make(map[string]string)
+	headers["From"] = from.String()
+	headers["To"] = to.String()
+	headers["Subject"] = subject
+
+	msg := ""
+	for i, j := range headers {
+		msg += fmt.Sprintf("%s: %s\r\n", i ,j)
+	}
+
+	msg += "MIME-Version: 1.0\r\n"
+	if attachment != nil {
+		msg += "Content-type: multipart/mixed; boundary=\"**=54jfsuf3jng3b\"\r\n"
+		msg += "\r\n--**=54jfsuf3jng3b\r\n"
+	}
+
+	msg += "Content-Type: text/html; charset=\"utf-8\"\r\n"
+	msg += "Content-Transfer-Encoding: 7bit\r\n"
+	msg += body+"\r\n"
+
+	if attachment != nil {
+		msg += "\r\n--**=54jfsuf3jng3b\r\n"
+		msg += "Content-Type: application/pdf; charset=\"utf-8\"\r\n"
+		msg += "Content-Transfer-Encoding: base64\r\n"
+		msg += "Content-Disposition: attachment;filename=\"label.pdf\"\r\n"
+		msg += "\r\n" + base64.StdEncoding.EncodeToString(attachment)
+	}
+
+	_, err = w.Write([]byte(msg))
+	err = w.Close()
+	err = cli.Quit()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

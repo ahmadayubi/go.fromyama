@@ -3,20 +3,37 @@ package controllers
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/xml"
+	"html/template"
+	"io/ioutil"
 	"net/http"
-	"net/smtp"
 	"os"
 	"strconv"
 
 	"../utils"
 	"../utils/database"
 	"../utils/jwtUtil"
-	xmlToJSON "github.com/basgys/goxml2json"
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
+	"github.com/stripe/stripe-go/refund"
 )
 
 const getShippingInfoAndPaymentSql = "SELECT company_name, street, city, province_code, country, postal_code, phone, payment_account_id, email FROM companies c INNER JOIN users u on c.head_id = u.id where c.id = $1"
+const addLabelsSql = "INSERT INTO labels(company_id, user_id, label, refund_link) VALUES ($1, $2, $3, $4)"
+
+type CanadaPostXML struct {
+	Tracking string `xml:"tracking-pin"`
+	Links []struct {
+		Name string `xml:"rel,attr"`
+		Link string `xml:"href,attr"`
+	} `xml:"links>link"`
+}
+
+type LabelPurchase struct {
+	PostalCode string
+	Total string
+	TrackingNumber string
+}
 
 func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
@@ -68,11 +85,15 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 		utils.JSONResponse(w, http.StatusConflict, "Payment Error")
 		return
 	}
+	refundParam := &stripe.RefundParams{
+		Charge: stripe.String(c.ID),
+	}
 
 	xmlBody := formatCanadaPostRequestBody(source, dest, body["weight"], body["service_code"])
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", "https://ct.soa-gw.canadapost.ca/rs/"+os.Getenv("CANADA_POST_CUSTNUM")+"/ncshipment", bytes.NewBuffer([]byte(xmlBody)))
 	if err != nil {
+		_, _ = refund.New(refundParam)
 		utils.ErrorResponse(w, err)
 		return
 	}
@@ -86,30 +107,67 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	resp, err := client.Do(req)
 	defer resp.Body.Close()
 	if err != nil {
+		_, _ = refund.New(refundParam)
 		utils.ErrorResponse(w, err)
 		return
 	}
+	respBody, _ := ioutil.ReadAll(resp.Body)
 
-	respReader, err := xmlToJSON.Convert(resp.Body)
+	var canadaPostBody CanadaPostXML
+
+	if err = xml.Unmarshal(respBody, &canadaPostBody); err != nil{
+		_, _ = refund.New(refundParam)
+		utils.ErrorResponse(w, err)
+		return
+	}
+	var labelLink, refundLink string
+	for i := range canadaPostBody.Links {
+		if canadaPostBody.Links[i].Name == "label" {
+			labelLink = canadaPostBody.Links[i].Link
+		}
+		if canadaPostBody.Links[i].Name == "refund" {
+			refundLink = canadaPostBody.Links[i].Link
+		}
+	}
+
+	addLabelQuery, err := database.DB.Prepare(addLabelsSql)
+	defer addLabelQuery.Close()
+	_, err = addLabelQuery.Exec(tokenClaims.CompanyID, tokenClaims.UserID,labelLink, refundLink)
 	if err != nil {
+		_, _ = refund.New(refundParam)
 		utils.ErrorResponse(w ,err)
 		return
 	}
 
-	emailAuth := smtp.PlainAuth("", os.Getenv("MAIL_USER"), os.Getenv("MAIL_PASS"), "smtppro.zoho.com")
-	to := []string{"ahmad.ayubi@hotmail.com"}
-	msg := []byte("To: ahmad.ayubi@hotmail.com\r\n"+
-		"Subject: Test Message\r\n"+
-		"\r\n"+
-		"Body TEST\r\n")
-	err = smtp.SendMail("smtppro.zoho.com:465", emailAuth, os.Getenv("MAIL_USER"), to, msg)
+	getLabelReq, err := http.NewRequest("GET", labelLink, nil)
+	getLabelReq.SetBasicAuth(os.Getenv("CANADA_POST_USER"), os.Getenv("CANADA_POST_PASS"))
+	getLabelReq.Header.Add("Accept","application/pdf")
+	labelResp, err := client.Do(getLabelReq)
+	label, err := ioutil.ReadAll(labelResp.Body)
+
+	receipt := LabelPurchase{
+		PostalCode: body["postal_code"],
+		Total: body["label_total"],
+		TrackingNumber: canadaPostBody.Tracking,
+	}
+
+	var tmplBuffer bytes.Buffer
+	tmpl := template.Must(template.ParseFiles("assets/templates/labelPurchase.html"))
+	tmpl.Execute(&tmplBuffer, receipt)
+
+	err = SendEmail("ahmad.ayubi@hotmail.com", "Shipping Label Purchased", tmplBuffer.String(), label)
 	if err != nil {
+		_, _ = refund.New(refundParam)
+		_ = SendEmail("ahmad.ayubi@hotmail.com", "Shipping Label Purchased", "Refund Label Purchase", nil)
 		utils.ErrorResponse(w ,err)
 		return
 	}
+
+
 
 	w.WriteHeader(http.StatusAccepted)
-	w.Write(respReader.Bytes())
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Write(label)
 }
 
 func formatCanadaPostRequestBody (source Shipper, dest Address, weight string, serviceCode string) string{
