@@ -25,9 +25,6 @@ const getShopifyTokenSql = "SELECT shopify_token, shopify_store FROM companies W
 type callbackResponse struct {
 	AccessToken string `json:"access_token"`
 }
-type urlResponse struct {
-	Url string `json:"url"`
-}
 type locationResponse struct {
 	Locations []struct {
 		ID                    int64       `json:"id"`
@@ -318,7 +315,7 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request){
 		utils.ErrorResponse(w, err)
 		return
 	}
-	var url urlResponse
+	var url utils.UrlResponse
 	url.Url = fmt.Sprintf("https://%s.myshopify.com/admin/oauth/authorize?client_id=%s&scope=read_orders,write_orders,read_customers&redirect_uri=%s/shopify/callback&state=%s&grant_options[]=",
 		body["shop"], os.Getenv("SHOP_API_KEY"), os.Getenv("BASE_URL"), uid.String())
 

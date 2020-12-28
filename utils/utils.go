@@ -4,14 +4,22 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 type Response struct {
@@ -21,6 +29,10 @@ type Response struct {
 
 type missingParamError struct {
 	s string
+}
+
+type UrlResponse struct {
+	Url string `json:"url"`
 }
 
 func (e *missingParamError) Error() string{
@@ -130,4 +142,79 @@ func Decrypt(cryptoText string) (string, error) {
 	stream.XORKeyStream(ciphertext, ciphertext)
 
 	return fmt.Sprintf("%s", ciphertext), nil
+}
+
+func GenerateOAuthHeader (method, path, consumerKey, consumerSecret, token, tokenSecret string, extra map[string]string) (string, string) {
+	vals := url.Values{}
+	vals.Add("oauth_nonce", uuid.New().String())
+	vals.Add("oauth_consumer_key", consumerKey)
+	vals.Add("oauth_signature_method", "HMAC-SHA1")
+	vals.Add("oauth_timestamp", strconv.Itoa(int(time.Now().Unix())))
+	vals.Add("oauth_version", "1.0")
+	vals.Add("oauth_token", token)
+
+	for key, val := range extra{
+		vals.Add(key, val)
+	}
+
+	if len(strings.Split(path, "?")) > 1 {
+		params := strings.Split(strings.Split(path, "?")[1], "&")
+		for i := range params {
+			pair := strings.Split(params[i], "=")
+			key, _ := url.QueryUnescape(pair[0])
+			val, _ := url.QueryUnescape(pair[1])
+			vals.Add(key, val)
+		}
+	}
+
+	parameterString := strings.Replace(vals.Encode(), "+", "%20", -1)
+
+	signatureBase := strings.ToUpper(method) + "&" + url.QueryEscape(strings.Split(path, "?")[0]) + "&" + url.QueryEscape(parameterString)
+	signingKey := url.QueryEscape(consumerSecret)+"&"+url.QueryEscape(tokenSecret)
+	signature := calculateSignature(signatureBase, signingKey)
+
+	return "OAuth oauth_consumer_key=\"" + url.QueryEscape(vals.Get("oauth_consumer_key")) + "\", oauth_nonce=\"" + url.QueryEscape(vals.Get("oauth_nonce")) +
+		"\", oauth_signature=\"" + url.QueryEscape(signature) + "\", oauth_signature_method=\"" + url.QueryEscape(vals.Get("oauth_signature_method")) +
+		"\", oauth_timestamp=\"" + url.QueryEscape(vals.Get("oauth_timestamp")) + "\", oauth_token=\"" + url.QueryEscape(vals.Get("oauth_token")) +
+		"\", oauth_version=\"" + url.QueryEscape(vals.Get("oauth_version")) + "\"", vals.Get("oauth_nonce")
+}
+
+func GenerateRequestOAuthHeader (method, path, callback, consumerKey, consumerSecret string) (string, string) {
+	vals := url.Values{}
+	vals.Add("oauth_nonce", uuid.New().String())
+	vals.Add("oauth_consumer_key", consumerKey)
+	vals.Add("oauth_signature_method", "HMAC-SHA1")
+	vals.Add("oauth_timestamp", strconv.Itoa(int(time.Now().Unix())))
+	vals.Add("oauth_version", "1.0")
+	vals.Add("oauth_callback",callback)
+
+
+	params := strings.Split(strings.Split(path, "?")[1], "&")
+	for i := range params {
+		pair := strings.Split(params[i],"=")
+		key, _ := url.QueryUnescape(pair[0])
+		val, _ := url.QueryUnescape(pair[1])
+		vals.Add(key, val)
+	}
+
+	parameterString := strings.Replace(vals.Encode(), "+", "%20", -1)
+
+	signatureBase := strings.ToUpper(method) + "&" + url.QueryEscape(strings.Split(path, "?")[0]) + "&" + url.QueryEscape(parameterString)
+	signingKey := url.QueryEscape(consumerSecret)+"&"
+	signature := calculateSignature(signatureBase, signingKey)
+
+	return "OAuth oauth_callback=\"" + url.QueryEscape(vals.Get("oauth_callback")) +
+		"\", oauth_consumer_key=\"" + url.QueryEscape(vals.Get("oauth_consumer_key")) +
+		"\", oauth_nonce=\"" + url.QueryEscape(vals.Get("oauth_nonce")) +
+		"\", oauth_signature=\"" + url.QueryEscape(signature) +
+		"\", oauth_signature_method=\"" + url.QueryEscape(vals.Get("oauth_signature_method")) +
+		"\", oauth_timestamp=\"" + url.QueryEscape(vals.Get("oauth_timestamp")) +
+		"\", oauth_version=\"" + url.QueryEscape(vals.Get("oauth_version")) + "\"", vals.Get("oauth_nonce")
+}
+
+func calculateSignature(base, key string) string {
+	hash := hmac.New(sha1.New, []byte(key))
+	hash.Write([]byte(base))
+	signature := hash.Sum(nil)
+	return base64.StdEncoding.EncodeToString(signature)
 }
