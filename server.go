@@ -28,6 +28,7 @@ func CreateRoutes() *chi.Mux{
 		r.Mount("/user", routes.UserRoutes())
 		r.Mount("/company", routes.CompanyRoutes())
 		r.Mount("/postage", routes.PostageRoutes())
+		r.Mount("/shopify", routes.ShopifyRoutes())
 	})
 	return router
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"../utils"
 	"../utils/database"
@@ -42,7 +43,6 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	err := utils.ParseRequestBody(r, &body,[]string{"name", "street", "city", "province_code", "country_code",
 		"postal_code", "phone", "length", "width", "height", "weight", "service_code", "label_total"})
 	if err != nil{
-
 		utils.ErrorResponse(w, err)
 		return
 	}
@@ -90,7 +90,9 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	}
 
 	xmlBody := formatCanadaPostRequestBody(source, dest, body["weight"], body["service_code"])
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: time.Second * 20,
+	}
 	req, err := http.NewRequest("POST", "https://ct.soa-gw.canadapost.ca/rs/"+os.Getenv("CANADA_POST_CUSTNUM")+"/ncshipment", bytes.NewBuffer([]byte(xmlBody)))
 	if err != nil {
 		_, _ = refund.New(refundParam)
@@ -143,6 +145,7 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	getLabelReq.SetBasicAuth(os.Getenv("CANADA_POST_USER"), os.Getenv("CANADA_POST_PASS"))
 	getLabelReq.Header.Add("Accept","application/pdf")
 	labelResp, err := client.Do(getLabelReq)
+	defer labelResp.Body.Close()
 	label, err := ioutil.ReadAll(labelResp.Body)
 
 	receipt := LabelPurchase{

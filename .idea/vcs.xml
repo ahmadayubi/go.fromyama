@@ -3,6 +3,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/github.com/basgys/goxml2json" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/src/github.com/google/uuid" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/github.com/jackc/pgx" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/src/github.com/stripe/stripe-go" vcs="Git" />
   </component>

@@ -2643,7 +2643,7 @@ false posixrules
     <database id="310" parent="1" name="d3gjic8dj3m4ou">
       <ObjectId>71050159</ObjectId>
       <Owner>uaidfjskkllxjg</Owner>
-      <IntrospectionStateNumber>264252206</IntrospectionStateNumber>
+      <IntrospectionStateNumber>264280495</IntrospectionStateNumber>
       <Current>1</Current>
     </database>
     <database id="311" parent="1" name="d3gjpqb0t30vmg">
@@ -19896,7 +19896,7 @@ UC/71050158
 </Acl>
       <StateNumber>262468847</StateNumber>
       <Owner>uaidfjskkllxjg</Owner>
-      <IntrospectionStateNumber>264252209</IntrospectionStateNumber>
+      <IntrospectionStateNumber>264280497</IntrospectionStateNumber>
       <Current>1</Current>
     </schema>
     <extension id="4108" parent="310" name="plpgsql">
@@ -20173,8 +20173,8 @@ UC/71050158
     </column>
     <column id="4139" parent="4121" name="shopify_store">
       <Position>4</Position>
-      <DataType>varchar(20)|0s</DataType>
-      <StateNumber>263928919</StateNumber>
+      <DataType>varchar(50)|0s</DataType>
+      <StateNumber>264280477</StateNumber>
       <TypeId>1043</TypeId>
     </column>
     <column id="4140" parent="4121" name="head_id">
@@ -20185,8 +20185,8 @@ UC/71050158
     </column>
     <column id="4141" parent="4121" name="shopify_token">
       <Position>6</Position>
-      <DataType>varchar(50)|0s</DataType>
-      <StateNumber>263922254</StateNumber>
+      <DataType>varchar(100)|0s</DataType>
+      <StateNumber>264280490</StateNumber>
       <TypeId>1043</TypeId>
     </column>
     <column id="4142" parent="4121" name="temp_data">
