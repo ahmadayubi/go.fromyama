@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"../../utils"
@@ -295,7 +296,7 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 		utils.ErrorResponse(w, err)
 		return
 	}
-	utils.JSONResponse(w, http.StatusOK, jsonResp)
+	utils.JSONResponse(w, http.StatusOK, formatShopifyOrder(jsonResp))
 }
 
 func GenerateAuthURL (w http.ResponseWriter, r *http.Request){
@@ -379,4 +380,45 @@ func Callback(w http.ResponseWriter, r *http.Request){
 		utils.JSONResponse(w, http.StatusAccepted, "Successfully Authenticated")
 		return
 	}
+}
+
+func formatShopifyOrder (resp unfulfilledResponse) utils.Orders {
+	var orders utils.Orders
+
+	for i := range resp.Orders {
+		add := utils.Address{
+			Name: resp.Orders[i].ShippingAddress.Name,
+			Address1: resp.Orders[i].ShippingAddress.Address1,
+			Address2: resp.Orders[i].ShippingAddress.Address2,
+			City: resp.Orders[i].ShippingAddress.City,
+			Province: resp.Orders[i].ShippingAddress.Province,
+			Country: resp.Orders[i].ShippingAddress.Country,
+			PostalCode: resp.Orders[i].ShippingAddress.Zip,
+		}
+		var items []utils.Item
+		for j := range resp.Orders[i].LineItems{
+			items = append(items, utils.Item{
+				Sku:      resp.Orders[i].LineItems[j].Sku,
+				Title:    resp.Orders[i].LineItems[j].Title,
+				Quantity: strconv.Itoa(resp.Orders[i].LineItems[j].Quantity),
+				Price:    resp.Orders[i].LineItems[j].Price,
+			})
+		}
+
+		ord := utils.Order{
+			Type:    "Shopify",
+			OrderID: strconv.FormatInt(resp.Orders[i].ID, 10),
+			CreatedAt: resp.Orders[i].CreatedAt,
+			Total: resp.Orders[i].TotalPrice,
+			Subtotal: resp.Orders[i].SubtotalPrice,
+			Tax: resp.Orders[i].TotalTax,
+			Currency: resp.Orders[i].Currency,
+			Name: resp.Orders[i].Name,
+			WasPaid: resp.Orders[i].FinancialStatus == "paid",
+			Items: items,
+			ShippingAddress: add,
+		}
+		orders.Orders = append(orders.Orders, ord)
+	}
+	return orders
 }

@@ -10,13 +10,12 @@ import (
 func EtsyRoutes() *chi.Mux{
 	router:= chi.NewRouter()
 
-	router.With(middleware.ProtectedApprovedUserRoute).Get("/generate-link", etsy.GenerateAuthURL)
+	router.With(middleware.ProtectedApprovedUserRoute).Post("/generate-link", etsy.GenerateAuthURL)
 	router.Get("/callback", etsy.Callback)
 
+	router.With(middleware.ProtectedApprovedUserRoute).Get("/orders/all", etsy.GetUnfulfilledOrders)
+
 	//router.With(middleware.ProtectedApprovedUserRoute).Post("/generate-link",etsy.GenerateAuthURL)
-
-
-	//router.With(middleware.ProtectedApprovedUserRoute).Get("/orders/all", etsy.GetUnfulfilledOrders)
 
 	return router
 }

@@ -35,6 +35,43 @@ type UrlResponse struct {
 	Url string `json:"url"`
 }
 
+type Orders struct {
+	Orders []Order `json:"orders"`
+}
+
+
+type Order struct {
+	Type      string `json:"type"`
+	OrderID   string `json:"order_id"`
+	CreatedAt string `json:"created_at"`
+	Total     string `json:"total"`
+	Subtotal  string `json:"subtotal"`
+	Tax       string `json:"tax"`
+	Currency  string `json:"currency"`
+	Name      string `json:"name"`
+	WasPaid   bool   `json:"was_paid"`
+	Items     []Item `json:"items"`
+	ShippingAddress Address `json:"shipping_address"`
+}
+
+type Item struct {
+	Sku      string `json:"sku"`
+	Title    string `json:"title"`
+	Quantity string `json:"quantity"`
+	Price    string `json:"price"`
+}
+
+type Address struct {
+	Name       string      `json:"name"`
+	Address1   string      `json:"address1"`
+	Address2   interface{} `json:"address2"`
+	City       string      `json:"city"`
+	Province   string      `json:"province"`
+	Country    string      `json:"country"`
+	PostalCode string      `json:"postal_code"`
+	Formmatted interface{} `json:"formmatted"`
+}
+
 func (e *missingParamError) Error() string{
 	return e.s
 }
@@ -173,10 +210,14 @@ func GenerateOAuthHeader (method, path, consumerKey, consumerSecret, token, toke
 	signingKey := url.QueryEscape(consumerSecret)+"&"+url.QueryEscape(tokenSecret)
 	signature := calculateSignature(signatureBase, signingKey)
 
-	return "OAuth oauth_consumer_key=\"" + url.QueryEscape(vals.Get("oauth_consumer_key")) + "\", oauth_nonce=\"" + url.QueryEscape(vals.Get("oauth_nonce")) +
-		"\", oauth_signature=\"" + url.QueryEscape(signature) + "\", oauth_signature_method=\"" + url.QueryEscape(vals.Get("oauth_signature_method")) +
-		"\", oauth_timestamp=\"" + url.QueryEscape(vals.Get("oauth_timestamp")) + "\", oauth_token=\"" + url.QueryEscape(vals.Get("oauth_token")) +
-		"\", oauth_version=\"" + url.QueryEscape(vals.Get("oauth_version")) + "\"", vals.Get("oauth_nonce")
+	return "OAuth oauth_consumer_key=\"" + url.QueryEscape(vals.Get("oauth_consumer_key")) +
+		"\", oauth_nonce=\"" + url.QueryEscape(vals.Get("oauth_nonce")) +
+		"\", oauth_signature=\"" + url.QueryEscape(signature) +
+		"\", oauth_signature_method=\"" + url.QueryEscape(vals.Get("oauth_signature_method")) +
+		"\", oauth_timestamp=\"" + url.QueryEscape(vals.Get("oauth_timestamp")) +
+		"\", oauth_token=\"" + url.QueryEscape(vals.Get("oauth_token")) +
+		"\", oauth_version=\"" + url.QueryEscape(vals.Get("oauth_version")) +
+		"\"", vals.Get("oauth_nonce")
 }
 
 func GenerateRequestOAuthHeader (method, path, callback, consumerKey, consumerSecret string) (string, string) {
