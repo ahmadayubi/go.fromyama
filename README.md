@@ -40,6 +40,7 @@
   - `POST /generate-link`
   - `GET /callback`
   - `GET /orders/all`
+  - `POST /fulfill`
   
 - ### /amazon
   
