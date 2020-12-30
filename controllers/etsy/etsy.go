@@ -60,9 +60,6 @@ type unfulfilledResponse struct {
 	} `json:"pagination"`
 }
 
-
-
-
 func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	client := &http.Client{
