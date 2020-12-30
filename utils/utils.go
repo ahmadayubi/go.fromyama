@@ -19,6 +19,8 @@ import (
 	"strings"
 	"time"
 
+	"../utils/response"
+
 	"github.com/google/uuid"
 )
 
@@ -76,9 +78,8 @@ func (e *missingParamError) Error() string{
 	return e.s
 }
 
-func ErrorResponse(w http.ResponseWriter, err error){
-	http.Error(w, err.Error(), http.StatusBadRequest)
-	return
+func ErrorResponse(w http.ResponseWriter, err string){
+	JSONResponse(w, http.StatusBadRequest, response.BasicMessage{Message: err})
 }
 
 func ForbiddenResponse(w http.ResponseWriter){
@@ -126,6 +127,7 @@ func JSONResponse(w http.ResponseWriter, status int, v interface{}) {
 
 func ParseRequestBody (r *http.Request, body *map[string]string, needed []string) error {
 	reqBody, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
 	if err = json.Unmarshal(reqBody, body);err != nil {
 		return err
 	}

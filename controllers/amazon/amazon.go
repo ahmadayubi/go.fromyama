@@ -37,7 +37,7 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request){
 	err = getTokenQuery.QueryRow(tokenClaims.CompanyID).Scan(&encryptedToken, &sellerID, &marketplace)
 	token, err := utils.Decrypt(encryptedToken)
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Hash Error")
 		return
 	}
 
@@ -60,7 +60,7 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request){
 	resp, _ := client.Do(req)
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	if err = xml.Unmarshal(respBody, &amazonOrders); err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Unmarshal Error")
 		return
 	}
 	resp.Body.Close()
@@ -84,7 +84,7 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request){
 			respD, _ := client.Do(reqD)
 			respDBody, _ := ioutil.ReadAll(respD.Body)
 			if err = xml.Unmarshal(respDBody, &orderDetails); err != nil {
-				utils.ErrorResponse(w, err)
+				utils.ErrorResponse(w, "Unmarshal Error")
 				return
 			}
 			respD.Body.Close()
@@ -101,7 +101,7 @@ func Authorize (w http.ResponseWriter, r *http.Request){
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body,[]string{"seller_id", "auth_token", "marketplace"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
@@ -110,11 +110,11 @@ func Authorize (w http.ResponseWriter, r *http.Request){
 	defer updateAmazonQuery.Close()
 	_, err = updateAmazonQuery.Exec(body["seller_id"], encryptedToken, body["marketplace"], tokenClaims.CompanyID)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Update Token Error")
 		return
 	}
 
-	utils.JSONResponse(w, http.StatusAccepted, "Amazon Store Connected.")
+	utils.JSONResponse(w, http.StatusAccepted, response.BasicMessage{Message: "Amazon Store Connected."})
 }
 
 // formatAmazonURL generates amazon url and signature for requests

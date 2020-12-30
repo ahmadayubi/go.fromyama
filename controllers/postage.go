@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/xml"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
@@ -35,13 +36,14 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	err := utils.ParseRequestBody(r, &body,[]string{"name", "street", "city", "province_code", "country_code",
 		"postal_code", "phone", "length", "width", "height", "weight", "service_code", "label_total"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
 	var source Shipper
 	var dest Address
 	var paymentAccount, email string
+	var parcel Parcel
 	dest.ShipperName = body["name"]
 	dest.Street = body["street"]
 	dest.City = body["city"]
@@ -49,18 +51,17 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	dest.Country = body["country_code"]
 	dest.PostalCode = body["postal_code"]
 	dest.Phone, _ = strconv.Atoi(body["phone"])
-	source.Parcels = []Parcel{
-		{
-			Length: body["length"],
-			Width: body["width"],
-			Height: body["height"],
-		},
-	}
+	parcel.Length, err = strconv.ParseFloat(body["length"], 64)
+	parcel.Width, err = strconv.ParseFloat(body["width"], 64)
+	parcel.Height, err = strconv.ParseFloat(body["height"], 64)
+	parcel.Weight, err = strconv.ParseFloat(body["weight"], 64)
+
+	source.Parcels = []Parcel{parcel}
 	getShippingInfoQuery, err := database.DB.Prepare(getShippingInfoAndPaymentSql)
 	defer getShippingInfoQuery.Close()
 	err = getShippingInfoQuery.QueryRow(tokenClaims.CompanyID).Scan(&source.Address.ShipperName, &source.Address.Street, &source.Address.City, &source.Address.ProvinceCode, &source.Address.Country, &source.Address.PostalCode, &source.Address.Phone, &paymentAccount, &email)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Get Shipper Error")
 		return
 	}
 
@@ -88,7 +89,7 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	req, err := http.NewRequest("POST", "https://ct.soa-gw.canadapost.ca/rs/"+os.Getenv("CANADA_POST_CUSTNUM")+"/ncshipment", bytes.NewBuffer([]byte(xmlBody)))
 	if err != nil {
 		_, _ = refund.New(refundParam)
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Postage Purchase Error")
 		return
 	}
 
@@ -102,7 +103,7 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	defer resp.Body.Close()
 	if err != nil {
 		_, _ = refund.New(refundParam)
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Postage Purchase Error")
 		return
 	}
 	respBody, _ := ioutil.ReadAll(resp.Body)
@@ -111,7 +112,7 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 
 	if err = xml.Unmarshal(respBody, &canadaPostBody); err != nil{
 		_, _ = refund.New(refundParam)
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Postage Purchase Error")
 		return
 	}
 	var labelLink, refundLink string
@@ -129,7 +130,7 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	_, err = addLabelQuery.Exec(tokenClaims.CompanyID, tokenClaims.UserID,labelLink, refundLink)
 	if err != nil {
 		_, _ = refund.New(refundParam)
-		utils.ErrorResponse(w ,err)
+		utils.ErrorResponse(w ,"Store Postage Error")
 		return
 	}
 
@@ -154,7 +155,7 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	if err != nil {
 		_, _ = refund.New(refundParam)
 		_ = SendEmail("ahmad.ayubi@hotmail.com", "Refund Label Purchase", "Refund Label Purchase", nil)
-		utils.ErrorResponse(w ,err)
+		utils.ErrorResponse(w ,"Sending Email Error")
 		return
 	}
 
@@ -173,7 +174,7 @@ func GetCanadaPostRate (w http.ResponseWriter, r *http.Request) {
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body,[]string{"postal_code","weight"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
@@ -187,13 +188,13 @@ func GetCanadaPostRate (w http.ResponseWriter, r *http.Request) {
 	defer getShippingInfoQuery.Close()
 	err = getShippingInfoQuery.QueryRow(tokenClaims.CompanyID).Scan(&sourcePostalCode)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Get Shipper Error")
 		return
 	}
 	xmlBody := formatCanadaPostRateBody(sourcePostalCode, body["postal_code"], body["weight"])
 	req, err := http.NewRequest("POST", "https://ct.soa-gw.canadapost.ca/rs/ship/price", bytes.NewBuffer([]byte(xmlBody)))
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Get Postage Rates Error")
 		return
 	}
 
@@ -206,14 +207,14 @@ func GetCanadaPostRate (w http.ResponseWriter, r *http.Request) {
 	resp, err := client.Do(req)
 	defer resp.Body.Close()
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Get Postage Rates Error")
 		return
 	}
 	respBody, _ := ioutil.ReadAll(resp.Body)
 
 	var rates response.CanadaPostRatesResponse
 	if err = xml.Unmarshal(respBody, &rates); err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Marshal Error")
 		return
 	}
 
@@ -284,9 +285,9 @@ func formatCanadaPostRequestBody (source Shipper, dest Address, weight string, s
 	xml += `<parcel-characteristics>`
 	xml += `<weight>`+weight+`</weight>`
 	xml += `<dimensions>`
-	xml += `<length>`+source.Parcels[0].Length+`</length>`
-	xml += `<width>`+source.Parcels[0].Width+`</width>`
-	xml += `<height>`+source.Parcels[0].Height+`</height>`
+	xml += `<length>`+fmt.Sprintf("%f",source.Parcels[0].Length)+`</length>`
+	xml += `<width>`+fmt.Sprintf("%f",source.Parcels[0].Width)+`</width>`
+	xml += `<height>`+fmt.Sprintf("%f",source.Parcels[0].Height)+`</height>`
 	xml += `</dimensions>`
 	xml += `</parcel-characteristics>`
 	xml += `<preferences>`

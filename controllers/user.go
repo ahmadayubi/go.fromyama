@@ -18,13 +18,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-
-
 const createUserSql = "INSERT INTO users(name, email, password, company_id, is_approved, is_head) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id"
 const addEmployeeSql = "INSERT INTO employees(company_id, user_id) VALUES ($1, $2)"
-
 const loginUserSql = "SELECT id, company_id, password, is_approved FROM users WHERE email = $1"
-
 const getUserDetailSql = "SELECT c.id, u.email, u.name as name, c.company_name, u.id, u.is_head FROM (SELECT * FROM users WHERE email = $1) u INNER JOIN companies c on c.id = u.company_id"
 
 // SignUpUser /signup signs user up and returns jwt token
@@ -33,13 +29,13 @@ func SignUpUser(w http.ResponseWriter, r *http.Request){
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body, []string{"email", "name", "company_id", "password"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
 	_, token, err := SignUpUserAndGenerateToken(w, false,false, body["name"], body["email"], body["password"], body["company_id"])
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Could Not Create Account")
 		return
 	}
 
@@ -52,14 +48,14 @@ func LoginUser(w http.ResponseWriter, r *http.Request){
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body, []string{"email", "password"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
 	query, err := database.DB.Prepare(loginUserSql)
 	defer query.Close()
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "User Credential Fetch Error")
 		return
 	}
 
@@ -68,7 +64,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request){
 	var approved bool
 	err = row.Scan(&id, &companyID, &hash, &approved)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "User Credential Fetch Error")
 		return
 	}
 
@@ -82,17 +78,19 @@ func LoginUser(w http.ResponseWriter, r *http.Request){
 		Approved: approved,
 	}
 
-	token, err := jwtUtil.GenToken(tokenClaims)
+	token, err := jwtUtil.GenerateToken(tokenClaims)
 	if authorized := <-authChannel;err != nil || !(authorized) {
 		if !authorized {
 			utils.ForbiddenResponse(w)
 		} else {
-			utils.ErrorResponse(w, err)
+			utils.ErrorResponse(w, "Token Generation Error")
 		}
 		return
 	}
 
-	utils.JSONResponse(w, http.StatusAccepted, token)
+	utils.JSONResponse(w, http.StatusAccepted, response.Token{
+		Raw: token,
+	})
 }
 
 // GetUserDetails /details returns the users details
@@ -101,13 +99,13 @@ func GetUserDetails(w http.ResponseWriter, r *http.Request){
 	defer query.Close()
 	claims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
 	var q response.UserDetails
 	if err = query.QueryRow(claims.Email).Scan(&q.UserData.CompanyID, &q.UserData.Email,&q.UserData.Name,&q.CompanyName, &q.UserData.ID, &q.UserData.IsHead); err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Company Details Fetch Error")
 		return
 	}
 	utils.JSONResponse(w, http.StatusAccepted, q)
@@ -123,30 +121,30 @@ func ComparePassword(hash, password string, c chan bool){
 }
 
 // SignUpUserAndGenerateToken util function that signs up user and generates the jwt token
-func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,name, email, password, companyID string) (string, string, error) {
+func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,name, email, password, companyID string) (string, response.Token, error) {
 	userCreateQuery, err := database.DB.Prepare(createUserSql)
 	defer userCreateQuery.Close()
 	if err != nil{
-		utils.ErrorResponse(w, err)
-		return "", "", err
+		utils.ErrorResponse(w, "Create User Error")
+		return "", response.Token{}, err
 	}
 	hashByte, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	if err != nil {
-		utils.ErrorResponse(w, err)
-		return "", "", err
+		utils.ErrorResponse(w, "Password Hash Error")
+		return "", response.Token{}, err
 	}
 	var userIdString string
 	err = userCreateQuery.QueryRow(name, email, string(hashByte), companyID, approved, isHead).Scan(&userIdString)
 	if err != nil {
-		utils.ErrorResponse(w, err)
-		return "", "", err
+		utils.ErrorResponse(w, "Create User Error")
+		return "", response.Token{}, err
 	}
 	addEmployeeQuery, err := database.DB.Prepare(addEmployeeSql)
 	defer addEmployeeQuery.Close()
 	_, err = addEmployeeQuery.Exec(companyID, userIdString)
 	if err != nil {
-		utils.ErrorResponse(w, err)
-		return "", "", err
+		utils.ErrorResponse(w, "Adding Employee Error")
+		return "", response.Token{}, err
 	}
 
 	tokenClaims := jwtUtil.TokenClaims{
@@ -156,28 +154,30 @@ func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,nam
 		Approved: approved,
 	}
 
-	token, err := jwtUtil.GenToken(tokenClaims)
+	token, err := jwtUtil.GenerateToken(tokenClaims)
 	if err != nil {
-		utils.ErrorResponse(w, err)
-		return "", "", err
+		utils.ErrorResponse(w, "Token Generation Error")
+		return "", response.Token{}, err
 	}
 
 	newUserHTML, err := ioutil.ReadFile("assets/templates/newUser.html")
 	err = SendEmail(email, "Welcome To FromYama", string(newUserHTML), nil)
 	if err != nil {
-		utils.ErrorResponse(w, err)
-		return "", "", err
+		utils.ErrorResponse(w, "Sending Email Error")
+		return "", response.Token{}, err
 	}
 
-	return userIdString, token, nil
+	return userIdString, response.Token{
+		Raw: token,
+	}, nil
 }
 
 // RefreshToken /user/refresh refreshes the token without needing to check password
 func RefreshToken(w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
-	token, err := jwtUtil.GenToken(tokenClaims)
+	token, err := jwtUtil.GenerateToken(tokenClaims)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Token Generation Error")
 		return
 	}
 	utils.JSONResponse(w, http.StatusAccepted, response.Token{Raw: token})
@@ -186,8 +186,8 @@ func RefreshToken(w http.ResponseWriter, r *http.Request){
 // SendEmail util function that sends email to user
 func SendEmail(toEmail, subject, body string, attachment []byte) error {
 	fromString := os.Getenv("MAIL_USER")
-	from := mail.Address{"FromYama",fromString}
-	to := mail.Address{"", toEmail}
+	from := mail.Address{Name: "FromYama",Address: fromString}
+	to := mail.Address{Name: "", Address: toEmail}
 
 
 	serverName := "smtppro.zoho.com:465"

@@ -10,6 +10,7 @@ import (
 	"../utils"
 	"../utils/database"
 	"../utils/jwtUtil"
+	"../utils/response"
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
 	"github.com/stripe/stripe-go/customer"
@@ -23,8 +24,8 @@ const isEmployeeApprovedSql = "SELECT is_approved, company_id FROM users WHERE i
 const getCompanyDetailSql = "SELECT company_name, head_id, total_due, street, city, province_code, country, postal_code, phone FROM companies WHERE id = $1"
 const addPaymentMethodSql = "UPDATE companies SET payment_account_id = $1 WHERE id = $2"
 const getPaymentMethodSql = "SELECT payment_account_id FROM companies WHERE id = $1"
-const addParcelSql = "INSERT INTO parcel_options (company_id, length, width, height, name) VALUES ($1, $2, $3, $4, $5)"
-const getParcelSql = "SELECT name, length, width, height FROM parcel_options WHERE company_id = $1"
+const addParcelSql = "INSERT INTO parcel_options (company_id, length, width, height, name, weight) VALUES ($1, $2, $3, $4, $5, $6)"
+const getParcelSql = "SELECT name, length, width, height, weight FROM parcel_options WHERE company_id = $1"
 const getShippingInfoSql = "SELECT company_name, street, city, province_code, country, postal_code, phone FROM companies where id = $1"
 const isEmployeeHeadSql = "SELECT is_head FROM users WHERE id = $1"
 const unregisterCompanySql = "DELETE FROM companies WHERE id = $1"
@@ -55,14 +56,19 @@ type Company struct {
 
 type Parcel struct {
 	Name string `json:"name"`
-	Length string `json:"length"`
-	Width string `json:"width"`
-	Height string `json:"height"`
+	Length float64 `json:"length"`
+	Width float64 `json:"width"`
+	Height float64 `json:"height"`
+	Weight float64 `json:"weight"`
 }
 
 type Shipper struct {
 	Address Address `json:"address"`
 	Parcels []Parcel `json:"parcels"`
+}
+
+type approvedResponse struct {
+	approved bool `json:"approved"`
 }
 
 // GetAllEmployeeDetails /employee/all returns array of all employees registered to company and the details
@@ -71,12 +77,12 @@ func GetAllEmployeeDetails (w http.ResponseWriter, r *http.Request){
 	allEmployeeQuery, err := database.DB.Prepare(getAllEmployeesSql)
 	defer allEmployeeQuery.Close()
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Get Employee Data Error")
 		return
 	}
 	rows, err := allEmployeeQuery.Query(tokenClaims.CompanyID)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Get Employee Data Error")
 		return
 	}
 	var allEmployees []Employee
@@ -95,14 +101,14 @@ func RegisterCompany (w http.ResponseWriter, r *http.Request){
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body,[]string{"email", "name", "company_name", "password", "street", "city", "province_code", "country", "postal_code", "phone"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, "+err.Error())
 		return
 	}
 
 	takenQuery, err := database.DB.Prepare("SELECT exists(SELECT 1 from users where email=$1)")
 	defer takenQuery.Close()
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Check Existing Email Error")
 		return
 	}
 	var taken bool
@@ -111,7 +117,7 @@ func RegisterCompany (w http.ResponseWriter, r *http.Request){
 		registerCompanyQuery, err := database.DB.Prepare(registerCompanySql)
 		defer registerCompanyQuery.Close()
 		if err != nil {
-			utils.ErrorResponse(w, err)
+			utils.ErrorResponse(w, "Register Company Error")
 			return
 		}
 		var companyID string
@@ -123,14 +129,14 @@ func RegisterCompany (w http.ResponseWriter, r *http.Request){
 		defer setHeadQuery.Close()
 		_, err = setHeadQuery.Exec(userID, companyID)
 		if err != nil {
-			utils.ErrorResponse(w, err)
+			utils.ErrorResponse(w, "Register Company Error")
 			return
 		}
 
 		utils.JSONResponse(w, http.StatusCreated, token)
 		return
 	}
-	utils.JSONResponse(w, http.StatusAlreadyReported, "Email Already In Use")
+	utils.JSONResponse(w, http.StatusAlreadyReported, response.BasicMessage{Message: "Email Already In Use"})
 }
 
 // ApproveEmployee /employee/approve/{employeeID} approves employee
@@ -140,15 +146,15 @@ func ApproveEmployee (w http.ResponseWriter, r *http.Request){
 	approveEmployeeQuery, err := database.DB.Prepare(approveEmployeeSql)
 	defer approveEmployeeQuery.Close()
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Approve Employee Error")
 		return
 	}
 	_, err = approveEmployeeQuery.Exec(employeeID)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Approve Employee Error")
 		return
 	}
-	utils.JSONResponse(w, http.StatusAccepted, "Employee Approved")
+	utils.JSONResponse(w, http.StatusAccepted, response.BasicMessage{Message: "Employee Approved"})
 }
 
 // IsEmployeeApproved /employee/approved/{employeeID} returns if the employee is approved
@@ -159,21 +165,21 @@ func IsEmployeeApproved (w http.ResponseWriter, r *http.Request){
 	isApprovedQuery, err := database.DB.Prepare(isEmployeeApprovedSql)
 	defer isApprovedQuery.Close()
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Employee Approve Check Error")
 		return
 	}
 	var approved bool
 	var companyID string
 	err = isApprovedQuery.QueryRow(employeeID).Scan(&approved, &companyID)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Employee Approve Check Error")
 		return
 	}
 	if tokenClaims.CompanyID != companyID {
-		utils.JSONResponse(w, http.StatusForbidden, "Employee Not Registered To Your Company")
+		utils.JSONResponse(w, http.StatusForbidden, response.BasicMessage{Message:"Employee Not Registered To Your Company"})
 		return
 	}
-	utils.JSONResponse(w, http.StatusOK, approved)
+	utils.JSONResponse(w, http.StatusOK, approvedResponse{approved: approved})
 }
 
 // GetCompanyDetails /details returns the company details, a Company struct
@@ -183,7 +189,7 @@ func GetCompanyDetails (w http.ResponseWriter, r *http.Request){
 	companyDetailsQuery, err := database.DB.Prepare(getCompanyDetailSql)
 	defer companyDetailsQuery.Close()
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Get Company Details Error")
 		return
 	}
 
@@ -192,7 +198,7 @@ func GetCompanyDetails (w http.ResponseWriter, r *http.Request){
 		&c.TotalDue, &c.Address.Street, &c.Address.City, &c.Address.ProvinceCode,
 		&c.Address.Country, &c.Address.PostalCode, &c.Address.Phone)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Get Company Details Error")
 		return
 	}
 	utils.JSONResponse(w, http.StatusOK, c)
@@ -206,11 +212,7 @@ func AddPaymentMethod (w http.ResponseWriter, r *http.Request){
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body, []string{"payment_token"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
-		return
-	}
-	if body["payment_token"] == ""{
-		utils.JSONResponse(w, http.StatusBadRequest, "Missing Payment Token")
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
@@ -230,29 +232,29 @@ func AddPaymentMethod (w http.ResponseWriter, r *http.Request){
 	addPaymentQuery, err := database.DB.Prepare(addPaymentMethodSql)
 	defer addPaymentQuery.Close()
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Add Payment Error")
 		return
 	}
 	_, err = addPaymentQuery.Exec(c.ID, tokenClaims.CompanyID)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Add Payment Error")
 		return
 	}
-	utils.JSONResponse(w, http.StatusAccepted, "Payment Account Added")
+	utils.JSONResponse(w, http.StatusAccepted, response.BasicMessage{Message:"Payment Account Added"})
 }
 
-// ChargePaymentAccount /add/payment/charge charges the company acount
+// ChargePaymentAccount /add/payment/charge charges the company account
 // request body has amount
 func ChargePaymentAccount (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body, []string{"amount"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 	if body["amount"] == "" {
-		utils.JSONResponse(w, http.StatusBadRequest, "Missing Amount ")
+		utils.JSONResponse(w, http.StatusBadRequest, response.BasicMessage{Message:"Missing Amount "})
 		return
 	}
 	stripe.Key = os.Getenv("STRIPE_SECRET")
@@ -263,7 +265,7 @@ func ChargePaymentAccount (w http.ResponseWriter, r *http.Request){
 	err = getPaymentMethodQuery.QueryRow(tokenClaims.CompanyID).Scan(&paymentID)
 	amount, err := strconv.ParseInt(body["amount"],0, 64)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Get Payment Account Error")
 		return
 	}
 
@@ -275,9 +277,9 @@ func ChargePaymentAccount (w http.ResponseWriter, r *http.Request){
 	}
 	c, _ := charge.New(params)
 	if !c.Paid {
-		utils.JSONResponse(w, http.StatusConflict, "Payment Error")
+		utils.JSONResponse(w, http.StatusConflict, response.BasicMessage{Message:"Payment Error"})
 	}
-	utils.JSONResponse(w, http.StatusAccepted, "Payment Successful")
+	utils.JSONResponse(w, http.StatusAccepted, response.BasicMessage{Message:"Payment Successful"})
 }
 
 // AddParcel /add/parcel adds parcel option to company parcels
@@ -285,19 +287,21 @@ func ChargePaymentAccount (w http.ResponseWriter, r *http.Request){
 func AddParcel (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body, []string{"length", "width", "height", "name"})
+	err := utils.ParseRequestBody(r, &body, []string{"length", "width", "height", "name", "weight"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 	addParcelQuery, err := database.DB.Prepare(addParcelSql)
 	defer addParcelQuery.Close()
-	_, err = addParcelQuery.Exec(tokenClaims.CompanyID, body["length"], body["width"], body["height"], body["name"])
+	_, err = addParcelQuery.Exec(tokenClaims.CompanyID, body["length"], body["width"], body["height"], body["name"], body["weight"])
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Add Parcel Error")
 		return
 	}
-	utils.JSONResponse(w, http.StatusCreated, "Parcel Added")
+	utils.JSONResponse(w, http.StatusCreated, response.BasicMessage{
+		Message: "Parcel Added",
+	})
 }
 
 // GetShipper /shipper returns the seller address and parcel options
@@ -308,13 +312,13 @@ func GetShipper (w http.ResponseWriter, r *http.Request){
 	defer getParcelAndShippingQuery.Close()
 	rows, err := getParcelAndShippingQuery.Query(tokenClaims.CompanyID)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Get Parcel Error")
 		return
 	}
 	var allParcel []Parcel
 	for rows.Next(){
 		var p Parcel
-		err = rows.Scan(&p.Name, &p.Length, &p.Width, &p.Height)
+		err = rows.Scan(&p.Name, &p.Length, &p.Width, &p.Height, &p.Weight)
 		allParcel = append(allParcel, p)
 	}
 
@@ -323,7 +327,7 @@ func GetShipper (w http.ResponseWriter, r *http.Request){
 	defer getShippingInfoQuery.Close()
 	err = getShippingInfoQuery.QueryRow(tokenClaims.CompanyID).Scan(&a.ShipperName, &a.Street, &a.City, &a.ProvinceCode, &a.Country, &a.PostalCode, &a.Phone)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Get Shipper Error")
 		return
 	}
 	shipper := Shipper{
@@ -342,11 +346,11 @@ func UnregisterCompany (w http.ResponseWriter, r *http.Request){
 	defer isEmployeeHeadQuery.Close()
 	err = isEmployeeHeadQuery.QueryRow(tokenClaims.UserID).Scan(&isHead)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Is Employee Head Error")
 		return
 	}
 	if !isHead{
-		utils.JSONResponse(w, http.StatusUnauthorized, "Need To Be Head To Unregister")
+		utils.JSONResponse(w, http.StatusUnauthorized, response.BasicMessage{Message: "Need To Be Head To Unregister"})
 		return
 	}
 
@@ -354,8 +358,8 @@ func UnregisterCompany (w http.ResponseWriter, r *http.Request){
 	defer unregisterCompanyQuery.Close()
 	_, err = unregisterCompanyQuery.Exec(tokenClaims.CompanyID)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Unregister Company Error")
 		return
 	}
-	utils.JSONResponse(w, http.StatusAccepted, "Company Unregister")
+	utils.JSONResponse(w, http.StatusAccepted, response.BasicMessage{Message: "Company Unregistered"})
 }

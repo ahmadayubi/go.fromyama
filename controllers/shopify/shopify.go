@@ -31,13 +31,10 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body,[]string{"order_id", "location_id", "notify_customer"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 	var encryptedToken, store string
-	client := &http.Client{
-		Timeout: time.Second * 10,
-	}
 
 	getShopifyQuery, err := database.DB.Prepare(getShopifyTokenSql)
 	defer getShopifyQuery.Close()
@@ -45,7 +42,7 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 
 	token, err := utils.Decrypt(encryptedToken)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Hash Error")
 		return
 	}
 
@@ -63,33 +60,26 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 
 	fulfillmentJSON, err := json.Marshal(fulfillmentData)
 
-	req, err := http.NewRequest("POST", "https://"+store+"/admin/api/2020-10/orders/"+body["order_id"]+"/fulfillments.json", bytes.NewBuffer(fulfillmentJSON))
-	req.Header.Add("X-Shopify-Access-Token", token)
-	req.Header.Add("Content-Type", "application/json")
-	resp, err := client.Do(req)
+	respBody, err := shopifyRequest("POST", "https://"+store+"/admin/api/2020-10/orders/"+body["order_id"]+"/fulfillments.json", token, fulfillmentJSON)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Shopify Request Error")
 		return
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
 
 	var fulfillmentResponse response.ShopifyFulfillmentResponse
 	err = json.Unmarshal(respBody, &fulfillmentResponse)
 	if err != nil || fulfillmentResponse.Fulfillment.Status == "" {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Marshal Error")
 		return
 	}
 
-	utils.JSONResponse(w, http.StatusOK, "Order Fulfilled")
+	utils.JSONResponse(w, http.StatusOK, response.BasicMessage{Message: "Order Fulfilled"})
 }
 
 // GetLocations /locations returns array of locations that shopify uses for fulfilling orders
 func GetLocations (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var encryptedToken, store string
-	client := &http.Client{
-		Timeout: time.Second * 10,
-	}
 
 	getShopifyQuery, err := database.DB.Prepare(getShopifyTokenSql)
 	defer getShopifyQuery.Close()
@@ -97,22 +87,20 @@ func GetLocations (w http.ResponseWriter, r *http.Request){
 
 	token, err := utils.Decrypt(encryptedToken)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Hash Error")
 		return
 	}
 
-	req, err := http.NewRequest("GET", "https://"+store+"/admin/api/2020-04/locations.json", nil)
-	req.Header.Add("X-Shopify-Access-Token", token)
-	resp, err := client.Do(req)
+	respBody,err := shopifyRequest("GET", "https://"+store+"/admin/api/2020-04/locations.json", token, nil)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Shopify Request Error")
 		return
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
+
 	var jsonResp response.LocationResponse
 	err = json.Unmarshal(respBody, &jsonResp)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Unmarshal Error")
 		return
 	}
 	utils.JSONResponse(w, http.StatusOK, jsonResp)
@@ -123,9 +111,6 @@ func GetLocations (w http.ResponseWriter, r *http.Request){
 func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var encryptedToken, store string
-	client := &http.Client{
-		Timeout: time.Second * 10,
-	}
 
 	getShopifyQuery, err := database.DB.Prepare(getShopifyTokenSql)
 	defer getShopifyQuery.Close()
@@ -133,22 +118,20 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 
 	token, err := utils.Decrypt(encryptedToken)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Hash Error")
 		return
 	}
 
-	req, err := http.NewRequest("GET", "https://"+store+"/admin/api/2020-04/orders.json?updated_at_min=2005-07-31T15:57:11-04:00&fulfillment_status=unfulfilled", nil)
-	req.Header.Add("X-Shopify-Access-Token", token)
-	resp, err := client.Do(req)
+	respBody, err := shopifyRequest("GET", "https://"+store+"/admin/api/2020-04/orders.json?updated_at_min=2005-07-31T15:57:11-04:00&fulfillment_status=unfulfilled", token, nil)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Shopify Request Error")
 		return
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
+
 	var jsonResp response.ShopifyUnfulfilledResponse
 	err = json.Unmarshal(respBody, &jsonResp)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Unmarshal Error")
 		return
 	}
 	utils.JSONResponse(w, http.StatusOK, formatShopifyOrder(jsonResp))
@@ -162,7 +145,7 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request){
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body,[]string{"shop"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 	uid := uuid.New()
@@ -170,7 +153,7 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request){
 	defer updateTempQuery.Close()
 	_, err = updateTempQuery.Exec(uid.String(), tokenClaims.CompanyID)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Update UUID Error")
 		return
 	}
 	var url utils.UrlResponse
@@ -202,7 +185,7 @@ func Callback(w http.ResponseWriter, r *http.Request){
 		body, err := json.Marshal(reqBody)
 		req, err := http.NewRequest("POST", "https://"+shop+"/admin/oauth/access_token",bytes.NewBuffer(body))
 		if err != nil {
-			utils.ErrorResponse(w, err)
+			utils.ErrorResponse(w, "Token Error")
 			return
 		}
 		req.Header.Set("Content-Type", "application/json")
@@ -214,7 +197,7 @@ func Callback(w http.ResponseWriter, r *http.Request){
 		var jsonResp response.CallbackResponse
 		err = json.Unmarshal(respBody, &jsonResp)
 		if err != nil {
-			utils.ErrorResponse(w, err)
+			utils.ErrorResponse(w, "Unmarshal Error")
 			return
 		}
 		if jsonResp.AccessToken == "" {
@@ -227,11 +210,11 @@ func Callback(w http.ResponseWriter, r *http.Request){
 		defer updateShopifyTokenQuery.Close()
 		_, err = updateShopifyTokenQuery.Exec(shop, encryptedToken, state)
 		if err != nil {
-			utils.ErrorResponse(w, err)
+			utils.ErrorResponse(w, "Update Token Error")
 			return
 		}
 
-		utils.JSONResponse(w, http.StatusAccepted, "Successfully Authenticated")
+		utils.JSONResponse(w, http.StatusAccepted, response.BasicMessage{Message: "Successfully Authenticated"})
 		return
 	}
 }
@@ -276,4 +259,19 @@ func formatShopifyOrder (resp response.ShopifyUnfulfilledResponse) utils.Orders 
 		orders.Orders = append(orders.Orders, ord)
 	}
 	return orders
+}
+
+// shopifyRequest util function to make shopify api requests
+func shopifyRequest (method, url, token string, body []byte) ([]byte, error) {
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+	req.Header.Add("X-Shopify-Access-Token", token)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	respBody, err := ioutil.ReadAll(resp.Body)
+	return respBody, nil
 }

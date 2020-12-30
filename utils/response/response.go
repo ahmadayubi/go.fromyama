@@ -2,6 +2,10 @@ package response
 
 import "encoding/xml"
 
+type BasicMessage struct {
+	Message string `json:"message"`
+}
+
 type User struct {
 	Email string `json:"email"`
 	Name string	`json:"name"`

@@ -28,7 +28,7 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body,[]string{"order_id"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
@@ -40,7 +40,7 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 	token, err := utils.Decrypt(encryptedToken)
 	tokenSecret, err := utils.Decrypt(encryptedSecret)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Hash Error")
 		return
 	}
 
@@ -69,7 +69,7 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	token, err := utils.Decrypt(encryptedToken)
 	tokenSecret, err := utils.Decrypt(encryptedSecret)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Hash Error")
 		return
 	}
 
@@ -80,6 +80,10 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 
 	var jsonResponse response.EtsyUnfulfilledResponse
 	err = json.Unmarshal(respBody, &jsonResponse)
+	if err != nil {
+		utils.ErrorResponse(w, "Unmarshal Error")
+		return
+	}
 
 	jsonOrders := formatEtsyOrder(jsonResponse)
 
@@ -93,7 +97,7 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request) {
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body,[]string{"shop"})
 	if err != nil{
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
@@ -113,7 +117,7 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request) {
 
 	values, err := url.ParseQuery(string(respBody))
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Etsy Request Error")
 		return
 	}
 	requestToken := values.Get("oauth_token")
@@ -125,7 +129,7 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request) {
 	defer addTempQuery.Close()
 	_, err = addTempQuery.Exec(body["shop"], requestSecret, requestToken, tokenClaims.CompanyID)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Add Token Error")
 		return
 	}
 
@@ -146,7 +150,7 @@ func Callback(w http.ResponseWriter, r *http.Request){
 	defer findCompanySql.Close()
 	err = findCompanySql.QueryRow(authToken).Scan(&companyID, &tempSecret)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Find Company Token")
 		return
 	}
 
@@ -163,7 +167,7 @@ func Callback(w http.ResponseWriter, r *http.Request){
 
 	values, err := url.ParseQuery(string(respBody))
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Etsy Request Error")
 		return
 	}
 	pAuthToken, err := utils.Encrypt(values.Get("oauth_token"))
@@ -173,11 +177,11 @@ func Callback(w http.ResponseWriter, r *http.Request){
 	defer setTokenQuery.Close()
 	_, err = setTokenQuery.Exec(pAuthToken, pAuthSecret, companyID)
 	if err != nil {
-		utils.ErrorResponse(w, err)
+		utils.ErrorResponse(w, "Update Token Error")
 		return
 	}
 
-	utils.JSONResponse(w, http.StatusAccepted, "Etsy Store Added")
+	utils.JSONResponse(w, http.StatusAccepted, response.BasicMessage{Message: "Etsy Store Added"})
 }
 
 // formatEtsyOrder util function converts etsy response to fy orders

@@ -12,11 +12,13 @@ import (
 func ProtectedRoute(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqToken := r.Header.Get("Authorization")
-		if reqToken == ""{
+		splitHeader := strings.Split(reqToken, "Bearer ")
+		if reqToken == "" || len(splitHeader) != 2{
 			utils.ForbiddenResponse(w)
 			return
 		}
-		token := strings.Split(reqToken, "Bearer ")[1]
+
+		token := splitHeader[1]
 		claims, err := jwtUtil.CheckAndParseToken(token)
 		if err != nil {
 			utils.ForbiddenResponse(w)
@@ -30,11 +32,13 @@ func ProtectedRoute(next http.Handler) http.Handler {
 func ProtectedApprovedUserRoute(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqToken := r.Header.Get("Authorization")
-		if reqToken == ""{
+		splitHeader := strings.Split(reqToken, "Bearer ")
+		if reqToken == "" || len(splitHeader) != 2{
 			utils.ForbiddenResponse(w)
 			return
 		}
-		token := strings.Split(reqToken, "Bearer ")[1]
+
+		token := splitHeader[1]
 		claims, err := jwtUtil.CheckAndParseToken(token)
 		if err != nil {
 			utils.ForbiddenResponse(w)

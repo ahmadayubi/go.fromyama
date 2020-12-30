@@ -15,14 +15,19 @@ type TokenClaims struct {
 	Approved bool
 }
 
-func GenToken(user TokenClaims) (string, error){
+type invalidTokenError struct {}
+func (e *invalidTokenError) Error() string{
+	return "Invalid Token"
+}
+
+func GenerateToken(user TokenClaims) (string, error){
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 	claims["email"] = user.Email
 	claims["user_id"] = user.UserID
 	claims["company_id"] = user.CompanyID
 	claims["approved"] = user.Approved
-	claims["expiration"] = time.Now().Add(time.Hour*24).Unix()
+	claims["expiration"] = time.Now().Add(time.Hour*2).Unix()
 	tokenString, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
 		log.Print("Token Generation Error")
@@ -35,7 +40,7 @@ func CheckAndParseToken(tokenString string) (TokenClaims, error){
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("JWT_SECRET")), nil
 	})
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid{
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid && err == nil{
 		tokenClaims := TokenClaims{
 			Email: claims["email"].(string),
 			UserID: claims["user_id"].(string),
@@ -44,5 +49,5 @@ func CheckAndParseToken(tokenString string) (TokenClaims, error){
 		}
 		return tokenClaims, nil
 	}
-	return TokenClaims{}, err
+	return TokenClaims{}, &invalidTokenError{}
 }
