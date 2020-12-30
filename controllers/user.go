@@ -9,31 +9,15 @@ import (
 	"net/mail"
 	"net/smtp"
 	"os"
-	"strconv"
 
 	"../utils"
 	"../utils/database"
 	"../utils/jwtUtil"
+	"../utils/response"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-type User struct {
-	Email string `json:"email"`
-	Name string	`json:"name"`
-	CompanyID string `json:"company_id"`
-	IsHead bool `json:"is_head"`
-	ID string `json:"id"`
-}
-
-type Token struct {
-	Raw string `json:"token"`
-}
-
-type UserDetails struct {
-	UserData User `json:"user"`
-	CompanyName string `json:"company_name"`
-}
 
 
 const createUserSql = "INSERT INTO users(name, email, password, company_id, is_approved, is_head) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id"
@@ -116,7 +100,7 @@ func GetUserDetails(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	var q UserDetails
+	var q response.UserDetails
 	if err = query.QueryRow(claims.Email).Scan(&q.UserData.CompanyID, &q.UserData.Email,&q.UserData.Name,&q.CompanyName, &q.UserData.ID, &q.UserData.IsHead); err != nil {
 		utils.ErrorResponse(w, err)
 		return
@@ -182,26 +166,13 @@ func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,nam
 }
 
 func RefreshToken(w http.ResponseWriter, r *http.Request){
-	var body map[string]string
-	err := utils.ParseRequestBody(r, &body, nil)
-	approved, err := strconv.ParseBool(body["is_approved"])
-	if err != nil {
-		utils.ErrorResponse(w, err)
-		return
-	}
-	tokenClaims := jwtUtil.TokenClaims{
-		Email: body["email"],
-		UserID: body["user_id"],
-		CompanyID: body["company_id"],
-		Approved: approved,
-	}
-
+	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	token, err := jwtUtil.GenToken(tokenClaims)
 	if err != nil {
 		utils.ErrorResponse(w, err)
 		return
 	}
-	utils.JSONResponse(w, http.StatusAccepted, token)
+	utils.JSONResponse(w, http.StatusAccepted, response.Token{Raw: token})
 }
 
 func SendEmail(toEmail, subject, body string, attachment []byte) error {

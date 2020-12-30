@@ -14,6 +14,7 @@ import (
 	"../utils"
 	"../utils/database"
 	"../utils/jwtUtil"
+	"../utils/response"
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
 	"github.com/stripe/stripe-go/refund"
@@ -21,20 +22,7 @@ import (
 
 const getShippingInfoAndPaymentSql = "SELECT company_name, street, city, province_code, country, postal_code, phone, payment_account_id, email FROM companies c INNER JOIN users u on c.head_id = u.id where c.id = $1"
 const addLabelsSql = "INSERT INTO labels(company_id, user_id, label, refund_link) VALUES ($1, $2, $3, $4)"
-
-type CanadaPostXML struct {
-	Tracking string `xml:"tracking-pin"`
-	Links []struct {
-		Name string `xml:"rel,attr"`
-		Link string `xml:"href,attr"`
-	} `xml:"links>link"`
-}
-
-type LabelPurchase struct {
-	PostalCode string
-	Total string
-	TrackingNumber string
-}
+const getShippingPostalCodeSql = "SELECT postal_code FROM companies WHERE id = $1"
 
 func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
@@ -115,7 +103,7 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	}
 	respBody, _ := ioutil.ReadAll(resp.Body)
 
-	var canadaPostBody CanadaPostXML
+	var canadaPostBody response.CanadaPostPostageResponse
 
 	if err = xml.Unmarshal(respBody, &canadaPostBody); err != nil{
 		_, _ = refund.New(refundParam)
@@ -148,7 +136,7 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	defer labelResp.Body.Close()
 	label, err := ioutil.ReadAll(labelResp.Body)
 
-	receipt := LabelPurchase{
+	receipt := response.CanadaPostLabelPurchase{
 		PostalCode: body["postal_code"],
 		Total: body["label_total"],
 		TrackingNumber: canadaPostBody.Tracking,
@@ -161,7 +149,7 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	err = SendEmail("ahmad.ayubi@hotmail.com", "Shipping Label Purchased", tmplBuffer.String(), label)
 	if err != nil {
 		_, _ = refund.New(refundParam)
-		_ = SendEmail("ahmad.ayubi@hotmail.com", "Shipping Label Purchased", "Refund Label Purchase", nil)
+		_ = SendEmail("ahmad.ayubi@hotmail.com", "Refund Label Purchase", "Refund Label Purchase", nil)
 		utils.ErrorResponse(w ,err)
 		return
 	}
@@ -171,6 +159,88 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	w.WriteHeader(http.StatusAccepted)
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Write(label)
+}
+
+func GetCanadaPostRate (w http.ResponseWriter, r *http.Request) {
+	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
+
+	var body map[string]string
+	err := utils.ParseRequestBody(r, &body,[]string{"postal_code","weight"})
+	if err != nil{
+		utils.ErrorResponse(w, err)
+		return
+	}
+
+	client := &http.Client{
+		Timeout: time.Second * 20,
+	}
+
+	var sourcePostalCode string
+
+	getShippingInfoQuery, err := database.DB.Prepare(getShippingPostalCodeSql)
+	defer getShippingInfoQuery.Close()
+	err = getShippingInfoQuery.QueryRow(tokenClaims.CompanyID).Scan(&sourcePostalCode)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+	xmlBody := formatCanadaPostRateBody(sourcePostalCode, body["postal_code"], body["weight"])
+	req, err := http.NewRequest("POST", "https://ct.soa-gw.canadapost.ca/rs/ship/price", bytes.NewBuffer([]byte(xmlBody)))
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+
+	authEncoded := base64.StdEncoding.EncodeToString([]byte(os.Getenv("CANADA_POST_USER")+":"+os.Getenv("CANADA_POST_PASS")))
+	req.Header.Add("Accept", "application/vnd.cpc.ship.rate-v4+xml")
+	req.Header.Add("Content-Type", "application/vnd.cpc.ship.rate-v4+xml")
+	req.Header.Add("Authorization", "Basic " + authEncoded)
+	req.Header.Add("Accept-language", "en-CA")
+
+	resp, err := client.Do(req)
+	defer resp.Body.Close()
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+	respBody, _ := ioutil.ReadAll(resp.Body)
+
+	var rates response.CanadaPostRatesResponse
+	if err = xml.Unmarshal(respBody, &rates); err != nil{
+		utils.ErrorResponse(w, err)
+		return
+	}
+
+	var rateJSON []response.CanadaPostRate
+	for i := range rates.PriceQuote{
+		var adjustments []response.CanadaPostAdjustment
+		for j := range rates.PriceQuote[i].PriceDetails.Adjustments.Adjustment {
+			adjustments = append(adjustments, response.CanadaPostAdjustment{
+				AdjustmentCode: rates.PriceQuote[i].PriceDetails.Adjustments.Adjustment[j].AdjustmentCode,
+				AdjustmentCost: rates.PriceQuote[i].PriceDetails.Adjustments.Adjustment[j].AdjustmentCost,
+				AdjustmentName: rates.PriceQuote[i].PriceDetails.Adjustments.Adjustment[j].AdjustmentName,
+			})
+		}
+		rateJSON = append(rateJSON, response.CanadaPostRate{
+			ServiceCode: rates.PriceQuote[i].ServiceCode,
+			ServiceName: rates.PriceQuote[i].ServiceName,
+			WeightDetails: rates.PriceQuote[i].WeightDetails,
+			PriceDetails: response.CanadaPostRatePrice{
+				Base: rates.PriceQuote[i].PriceDetails.Base,
+				Gst: rates.PriceQuote[i].PriceDetails.Taxes.Gst,
+				Hst: rates.PriceQuote[i].PriceDetails.Taxes.Hst.Percent,
+				Pst: rates.PriceQuote[i].PriceDetails.Taxes.Pst,
+				Due: rates.PriceQuote[i].PriceDetails.Due,
+				Adjustments: adjustments,
+			},
+			AmDelivery: rates.PriceQuote[i].ServiceStandard.AmDelivery,
+			GuaranteedDelivery: rates.PriceQuote[i].ServiceStandard.GuaranteedDelivery,
+			ExpectedTransitTime: rates.PriceQuote[i].ServiceStandard.ExpectedTransitTime,
+			ExpectedDeliveryDate: rates.PriceQuote[i].ServiceStandard.ExpectedDeliveryDate,
+		})
+	}
+
+	utils.JSONResponse(w, http.StatusOK, rateJSON)
 }
 
 func formatCanadaPostRequestBody (source Shipper, dest Address, weight string, serviceCode string) string{
@@ -217,5 +287,19 @@ func formatCanadaPostRequestBody (source Shipper, dest Address, weight string, s
 	xml += `</preferences>`
 	xml += `</delivery-spec>`
 	xml += `</non-contract-shipment>`
+	return xml
+}
+
+func formatCanadaPostRateBody (sourcePostalCode, destPostalCode, weight string) string {
+	xml := `<?xml version="1.0" encoding="utf-8"?>`
+	xml += `<mailing-scenario xmlns="http://www.canadapost.ca/ws/ship/rate-v4">`
+	xml += `<customer-number>`+os.Getenv("CANADA_POST_CUSTNUM")+`</customer-number>`
+	xml += `<parcel-characteristics>`
+	xml += `<weight>`+weight+`</weight>`
+	xml += `</parcel-characteristics>`
+	xml += `<origin-postal-code>`+sourcePostalCode+`</origin-postal-code>`
+	xml += `<destination><domestic>`
+	xml += `<postal-code>`+destPostalCode+`</postal-code>`
+	xml += `</domestic></destination></mailing-scenario>`
 	return xml
 }
