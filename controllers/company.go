@@ -29,6 +29,7 @@ const getParcelSql = "SELECT name, length, width, height, weight FROM parcel_opt
 const getShippingInfoSql = "SELECT company_name, street, city, province_code, country, postal_code, phone FROM companies where id = $1"
 const isEmployeeHeadSql = "SELECT is_head FROM users WHERE id = $1"
 const unregisterCompanySql = "DELETE FROM companies WHERE id = $1"
+const getPlatformsSql = "SELECT amazon_auth_token, etsy_token_secret, shopify_token FROM companies WHERE id = $1"
 
 type Employee struct {
 	Name string `json:"name"`
@@ -68,7 +69,35 @@ type Shipper struct {
 }
 
 type approvedResponse struct {
-	approved bool `json:"approved"`
+	Approved bool `json:"approved"`
+}
+
+type platformResponse struct {
+	AmazonConnected bool `json:"amazon_connected"`
+	EtsyConnected bool `json:"etsy_connected"`
+	ShopifyConnected bool `json:"shopify_connected"`
+}
+
+func GetConnectedPlatforms (w http.ResponseWriter, r *http.Request){
+	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
+	getPlatformQuery, err := database.DB.Prepare(getPlatformsSql)
+	defer getPlatformQuery.Close()
+	if err != nil {
+		utils.ErrorResponse(w, "Get Platforms Error")
+		return
+	}
+	var amazon, etsy, shopify string
+	err = getPlatformQuery.QueryRow(tokenClaims.CompanyID).Scan(&amazon, &etsy, &shopify)
+	if err != nil {
+		utils.ErrorResponse(w, "Get Platforms Error")
+		return
+	}
+
+	utils.JSONResponse(w, http.StatusOK, platformResponse{
+		AmazonConnected: amazon != "",
+		EtsyConnected: etsy != "",
+		ShopifyConnected: shopify != "",
+	})
 }
 
 // GetAllEmployeeDetails /employee/all returns array of all employees registered to company and the details
@@ -179,7 +208,7 @@ func IsEmployeeApproved (w http.ResponseWriter, r *http.Request){
 		utils.JSONResponse(w, http.StatusForbidden, response.BasicMessage{Message:"Employee Not Registered To Your Company"})
 		return
 	}
-	utils.JSONResponse(w, http.StatusOK, approvedResponse{approved: approved})
+	utils.JSONResponse(w, http.StatusOK, approvedResponse{Approved: approved})
 }
 
 // GetCompanyDetails /details returns the company details, a Company struct

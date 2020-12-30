@@ -35,7 +35,6 @@ func SignUpUser(w http.ResponseWriter, r *http.Request){
 
 	_, token, err := SignUpUserAndGenerateToken(w, false,false, body["name"], body["email"], body["password"], body["company_id"])
 	if err != nil {
-		utils.ErrorResponse(w, "Could Not Create Account")
 		return
 	}
 

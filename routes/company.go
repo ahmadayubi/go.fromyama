@@ -10,6 +10,8 @@ import (
 func CompanyRoutes() *chi.Mux{
 	router:= chi.NewRouter()
 	router.Post("/register", controllers.RegisterCompany)
+
+	router.With(middleware.ProtectedApprovedUserRoute).Get("/platforms", controllers.GetConnectedPlatforms)
 	router.With(middleware.ProtectedApprovedUserRoute).Get("/employee/all", controllers.GetAllEmployeeDetails)
 
 	router.With(middleware.ProtectedApprovedUserRoute).Put("/employee/approve/{employeeID}", controllers.ApproveEmployee)

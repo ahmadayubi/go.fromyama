@@ -1,4 +1,4 @@
-# go.fromyama
+# go.fromyama - REST API
 
 ## Endpoints:
 
@@ -6,6 +6,7 @@
  
     - `POST /register`
     - `DELETE /unregister`
+    - `GET /platforms`
     - `GET /details`
     - `GET /employee/all`
     - `PUT /employee/approve/{companyID}`
