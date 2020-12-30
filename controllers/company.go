@@ -65,6 +65,7 @@ type Shipper struct {
 	Parcels []Parcel `json:"parcels"`
 }
 
+// GetAllEmployeeDetails /employee/all returns array of all employees registered to company and the details
 func GetAllEmployeeDetails (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	allEmployeeQuery, err := database.DB.Prepare(getAllEmployeesSql)
@@ -88,6 +89,8 @@ func GetAllEmployeeDetails (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusOK, allEmployees)
 }
 
+// RegisterCompany /register registers a company and user
+// request body has email, name, company_name, password, street, city, province_code, country, postal_code, phone
 func RegisterCompany (w http.ResponseWriter, r *http.Request){
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body,[]string{"email", "name", "company_name", "password", "street", "city", "province_code", "country", "postal_code", "phone"})
@@ -130,6 +133,8 @@ func RegisterCompany (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusAlreadyReported, "Email Already In Use")
 }
 
+// ApproveEmployee /employee/approve/{employeeID} approves employee
+// request url has employeeID
 func ApproveEmployee (w http.ResponseWriter, r *http.Request){
 	employeeID := chi.URLParam(r, "employeeID")
 	approveEmployeeQuery, err := database.DB.Prepare(approveEmployeeSql)
@@ -146,6 +151,8 @@ func ApproveEmployee (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusAccepted, "Employee Approved")
 }
 
+// IsEmployeeApproved /employee/approved/{employeeID} returns if the employee is approved
+// request url has employeeID
 func IsEmployeeApproved (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	employeeID := chi.URLParam(r, "employeeID")
@@ -169,6 +176,7 @@ func IsEmployeeApproved (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusOK, approved)
 }
 
+// GetCompanyDetails /details returns the company details, a Company struct
 func GetCompanyDetails (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 
@@ -190,10 +198,13 @@ func GetCompanyDetails (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusOK, c)
 }
 
+// AddPaymentMethod /add/payment/method adds Stripe payment method to
+// company account
+// request body has payment_token,
 func AddPaymentMethod (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body, nil)
+	err := utils.ParseRequestBody(r, &body, []string{"payment_token"})
 	if err != nil{
 		utils.ErrorResponse(w, err)
 		return
@@ -230,10 +241,12 @@ func AddPaymentMethod (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusAccepted, "Payment Account Added")
 }
 
+// ChargePaymentAccount /add/payment/charge charges the company acount
+// request body has amount
 func ChargePaymentAccount (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body, nil)
+	err := utils.ParseRequestBody(r, &body, []string{"amount"})
 	if err != nil{
 		utils.ErrorResponse(w, err)
 		return
@@ -257,7 +270,7 @@ func ChargePaymentAccount (w http.ResponseWriter, r *http.Request){
 	params := &stripe.ChargeParams{
 		Amount: stripe.Int64(amount),
 		Currency: stripe.String(string(stripe.CurrencyCAD)),
-		Description: stripe.String("Label Purchase"),
+		Description: stripe.String("Company Charge"),
 		Customer: stripe.String(paymentID),
 	}
 	c, _ := charge.New(params)
@@ -267,10 +280,12 @@ func ChargePaymentAccount (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusAccepted, "Payment Successful")
 }
 
+// AddParcel /add/parcel adds parcel option to company parcels
+// request body has length, width, height, name
 func AddParcel (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body, nil)
+	err := utils.ParseRequestBody(r, &body, []string{"length", "width", "height", "name"})
 	if err != nil{
 		utils.ErrorResponse(w, err)
 		return
@@ -285,6 +300,7 @@ func AddParcel (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusCreated, "Parcel Added")
 }
 
+// GetShipper /shipper returns the seller address and parcel options
 func GetShipper (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 
@@ -317,6 +333,7 @@ func GetShipper (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusOK, shipper)
 }
 
+// UnregisterCompany /unregister removes company from database
 func UnregisterCompany (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 

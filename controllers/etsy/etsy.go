@@ -20,6 +20,8 @@ const findCompanyByTempTokenSql = "SELECT id, temp_data FROM companies WHERE ets
 const updateEtsyTokenSql = "UPDATE companies SET temp_data = '', etsy_token=$1, etsy_token_secret=$2 WHERE id = $3"
 const getEtsyTokenSql = "SELECT etsy_store, etsy_token, etsy_token_secret FROM companies WHERE id = $1"
 
+// GetUnfulfilledOrders /orders/all returns array of unfulfilled orders from etsy
+// TODO: create endpoint for unfufilled orders and for fulfilled orders for etsy
 func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	client := &http.Client{
@@ -57,6 +59,8 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	utils.JSONResponse(w, http.StatusOK, jsonOrders)
 }
 
+// GenerateAuthURL /generate-link generates authentication link for etsy
+// request body has shop
 func GenerateAuthURL (w http.ResponseWriter, r *http.Request) {
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var body map[string]string
@@ -101,6 +105,8 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request) {
 	utils.JSONResponse(w, 200, authUrl)
 }
 
+// Callback /callback used to authenticate user and store
+// request url has oauth_token, oauth_verifier
 func Callback(w http.ResponseWriter, r *http.Request){
 	authToken := r.URL.Query().Get("oauth_token")
 	authVerifier := r.URL.Query().Get("oauth_verifier")
@@ -147,6 +153,7 @@ func Callback(w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusAccepted, "Etsy Store Added")
 }
 
+// formatEtsyOrder util function converts etsy response to fy orders
 func formatEtsyOrder (resp response.EtsyUnfulfilledResponse) utils.Orders{
 	var orders utils.Orders
 

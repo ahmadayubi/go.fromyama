@@ -24,7 +24,7 @@ const updateShopifyTokenSql = "UPDATE companies SET shopify_store = $1 ,shopify_
 const updateTempUUIDSql = "UPDATE companies SET temp_data = $1 WHERE id = $2"
 const getShopifyTokenSql = "SELECT shopify_token, shopify_store FROM companies WHERE id = $1"
 
-
+// GetLocations /locations returns array of locations that shopify uses for fulfilling orders
 func GetLocations (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var encryptedToken, store string
@@ -59,6 +59,8 @@ func GetLocations (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusOK, jsonResp)
 }
 
+// GetUnfulfilledOrders /orders/all returns all unfulfilled orders
+// TODO: create endpoint for unfufilled orders and for fulfilled orders for shopify
 func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var encryptedToken, store string
@@ -93,6 +95,8 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	utils.JSONResponse(w, http.StatusOK, formatShopifyOrder(jsonResp))
 }
 
+// GenerateAuthURL /generate-link generates authentication link for shopify stores
+// request body has shop
 func GenerateAuthURL (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 
@@ -117,12 +121,9 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusOK, url)
 }
 
+// Callback /callback authenticates company shopify store and encrypts tokens
+// request url has code, hmac, timestamp, state, shop
 func Callback(w http.ResponseWriter, r *http.Request){
-	decrpyt, err := utils.Decrypt("HMQLxYVIDIDdSlK0hrx3iTrsdXK8K7uiq5nQ20Dt_a0w312hi2Fi4PUscTEYdmKxGXJgaiI-")
-	if err == nil {
-		utils.JSONResponse(w, http.StatusOK, decrpyt)
-		return
-	}
 	code := r.URL.Query().Get("code")
 	hc := r.URL.Query().Get("hmac")
 	timestamp := r.URL.Query().Get("timestamp")
@@ -176,6 +177,7 @@ func Callback(w http.ResponseWriter, r *http.Request){
 	}
 }
 
+// formatShopifyOrder util function that takes response from shopify and formats to fy order
 func formatShopifyOrder (resp response.ShopifyUnfulfilledResponse) utils.Orders {
 	var orders utils.Orders
 

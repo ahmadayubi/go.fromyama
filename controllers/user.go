@@ -27,6 +27,8 @@ const loginUserSql = "SELECT id, company_id, password, is_approved FROM users WH
 
 const getUserDetailSql = "SELECT c.id, u.email, u.name as name, c.company_name, u.id, u.is_head FROM (SELECT * FROM users WHERE email = $1) u INNER JOIN companies c on c.id = u.company_id"
 
+// SignUpUser /signup signs user up and returns jwt token
+// request body has email, name, company_id, password
 func SignUpUser(w http.ResponseWriter, r *http.Request){
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body, []string{"email", "name", "company_id", "password"})
@@ -44,9 +46,11 @@ func SignUpUser(w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusCreated, token)
 }
 
+// LoginUser /login checks user email and password and returns jwt token
+// request body has email, password
 func LoginUser(w http.ResponseWriter, r *http.Request){
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body, nil)
+	err := utils.ParseRequestBody(r, &body, []string{"email", "password"})
 	if err != nil{
 		utils.ErrorResponse(w, err)
 		return
@@ -91,6 +95,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusAccepted, token)
 }
 
+// GetUserDetails /details returns the users details
 func GetUserDetails(w http.ResponseWriter, r *http.Request){
 	query, err := database.DB.Prepare(getUserDetailSql)
 	defer query.Close()
@@ -108,6 +113,7 @@ func GetUserDetails(w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusAccepted, q)
 }
 
+// ComparePassword util function that compares hash to password
 func ComparePassword(hash, password string, c chan bool){
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	if err != nil {
@@ -116,6 +122,7 @@ func ComparePassword(hash, password string, c chan bool){
 	c <- true
 }
 
+// SignUpUserAndGenerateToken util function that signs up user and generates the jwt token
 func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,name, email, password, companyID string) (string, string, error) {
 	userCreateQuery, err := database.DB.Prepare(createUserSql)
 	defer userCreateQuery.Close()
@@ -165,6 +172,7 @@ func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,nam
 	return userIdString, token, nil
 }
 
+// RefreshToken /user/refresh refreshes the token without needing to check password
 func RefreshToken(w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	token, err := jwtUtil.GenToken(tokenClaims)
@@ -175,6 +183,7 @@ func RefreshToken(w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusAccepted, response.Token{Raw: token})
 }
 
+// SendEmail util function that sends email to user
 func SendEmail(toEmail, subject, body string, attachment []byte) error {
 	fromString := os.Getenv("MAIL_USER")
 	from := mail.Address{"FromYama",fromString}

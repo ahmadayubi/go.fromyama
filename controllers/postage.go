@@ -24,6 +24,10 @@ const getShippingInfoAndPaymentSql = "SELECT company_name, street, city, provinc
 const addLabelsSql = "INSERT INTO labels(company_id, user_id, label, refund_link) VALUES ($1, $2, $3, $4)"
 const getShippingPostalCodeSql = "SELECT postal_code FROM companies WHERE id = $1"
 
+// BuyCanadaPostPostageLabel /buy/canadapost returns a pdf of the label just purchased
+// request body has name, street, city, province_code, country_code, postal_code, phone, length, width,
+// height, weight, service_code, label_total
+// TODO: remove label_total from request and replace with a request to check the price
 func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 
@@ -161,6 +165,8 @@ func BuyCanadaPostPostageLabel (w http.ResponseWriter, r *http.Request){
 	w.Write(label)
 }
 
+// GetCanadaPostRate /rates/canadapost returns array of rates
+// request body has postal_code, weight
 func GetCanadaPostRate (w http.ResponseWriter, r *http.Request) {
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 
@@ -243,6 +249,7 @@ func GetCanadaPostRate (w http.ResponseWriter, r *http.Request) {
 	utils.JSONResponse(w, http.StatusOK, rateJSON)
 }
 
+// formatCanadaPostRequestBody formats xml body for postage purchase request
 func formatCanadaPostRequestBody (source Shipper, dest Address, weight string, serviceCode string) string{
 	xml := `<?xml version="1.0" encoding="utf-8"?>`
 	xml += `<non-contract-shipment xmlns="http://www.canadapost.ca/ws/ncshipment-v4">`
@@ -290,6 +297,7 @@ func formatCanadaPostRequestBody (source Shipper, dest Address, weight string, s
 	return xml
 }
 
+// formatCanadaPostRateBody formats xml body for rate checking canada post request
 func formatCanadaPostRateBody (sourcePostalCode, destPostalCode, weight string) string {
 	xml := `<?xml version="1.0" encoding="utf-8"?>`
 	xml += `<mailing-scenario xmlns="http://www.canadapost.ca/ws/ship/rate-v4">`

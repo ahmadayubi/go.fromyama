@@ -22,7 +22,8 @@ import (
 const updateAmazonAuthSql = "UPDATE companies SET amazon_seller_id = $1, amazon_auth_token = $2, amazon_marketplace = $3 WHERE id = $4"
 const getAmazonTokensSql = "SELECT amazon_auth_token, amazon_seller_id, amazon_marketplace FROM companies WHERE id = $1"
 
-
+// GetUnfulfilledOrders /orders/all returns array of orders from amazon
+// TODO: create endpoint for unfufilled orders and for fulfilled orders for amazon
 func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 
@@ -93,6 +94,8 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusOK, formatAmazonOrder(amazonOrders,orderItems))
 }
 
+// Authorize /authorize saves amazon tokens to company account
+// request body has seller_id, auth_token, marketplace
 func Authorize (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var body map[string]string
@@ -114,6 +117,7 @@ func Authorize (w http.ResponseWriter, r *http.Request){
 	utils.JSONResponse(w, http.StatusAccepted, "Amazon Store Connected.")
 }
 
+// formatAmazonURL generates amazon url and signature for requests
 func formatAmazonURL (method, path, host string, params map[string]string) string {
 	hosts := map[string]string{
 		"A2EUQ1WTGCTBG2":"mws.amazonservices.ca",
@@ -140,6 +144,7 @@ func formatAmazonURL (method, path, host string, params map[string]string) strin
 	return url
 }
 
+// formatAmazonOrder formats amazon orders response and returns fy orders
 func formatAmazonOrder (resp response.AmazonUnfulfilledResponse, items [][]utils.Item) utils.Orders{
 	var orders utils.Orders
 	if len(items) > 0 {
@@ -168,6 +173,7 @@ func formatAmazonOrder (resp response.AmazonUnfulfilledResponse, items [][]utils
 	return orders
 }
 
+// formatAmazonItem formats amazon response for item details and returns fy items
 func formatAmazonItem (resp response.AmazonOrderDetailResponse) []utils.Item {
 	var items []utils.Item
 	for i := range resp.ListOrderItemsResult.OrderItems {
