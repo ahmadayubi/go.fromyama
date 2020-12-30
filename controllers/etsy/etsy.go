@@ -20,13 +20,46 @@ const findCompanyByTempTokenSql = "SELECT id, temp_data FROM companies WHERE ets
 const updateEtsyTokenSql = "UPDATE companies SET temp_data = '', etsy_token=$1, etsy_token_secret=$2 WHERE id = $3"
 const getEtsyTokenSql = "SELECT etsy_store, etsy_token, etsy_token_secret FROM companies WHERE id = $1"
 
+// FulfillOrder /fulfill fulfills etsy order
+// request body has order_id, optionally tracking_number, tracking_company
+// TODO:need to update receipt to mark as shipped
+func FulfillOrder (w http.ResponseWriter, r *http.Request) {
+	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
+	var body map[string]string
+	err := utils.ParseRequestBody(r, &body,[]string{"order_id"})
+	if err != nil{
+		utils.ErrorResponse(w, err)
+		return
+	}
+
+	var store, encryptedToken, encryptedSecret string
+	getTokenQuery, err := database.DB.Prepare(getEtsyTokenSql)
+	defer getTokenQuery.Close()
+	err = getTokenQuery.QueryRow(tokenClaims.CompanyID).Scan(&store, &encryptedToken, &encryptedSecret)
+
+	token, err := utils.Decrypt(encryptedToken)
+	tokenSecret, err := utils.Decrypt(encryptedSecret)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+
+	if body["tracking_number"] != "" && body["tracking_company"] != "" {
+		params := "&tracking_code="+body["tracking_number"]+"&carrier_name="+body["tracking_company"]+"&api_key="+os.Getenv("ETSY_API_KEY")
+		addTrackingResp := etsyRequest("POST", "https://openapi.etsy.com/v2/shops/"+store+"/receipts/"+body["order_id"]+"/tracking",
+			params, token, tokenSecret)
+
+		utils.JSONResponse(w, http.StatusOK, addTrackingResp)
+	}
+
+
+
+}
+
 // GetUnfulfilledOrders /orders/all returns array of unfulfilled orders from etsy
 // TODO: create endpoint for unfufilled orders and for fulfilled orders for etsy
 func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
-	client := &http.Client{
-		Timeout: time.Second * 10,
-	}
 
 	var store, encryptedToken, encryptedSecret string
 	getTokenQuery, err := database.DB.Prepare(getEtsyTokenSql)
@@ -42,14 +75,8 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 
 	// https://openapi.etsy.com/v2/shops/teststorefy/receipts/open
 
-	authHeader, _ := utils.GenerateOAuthHeader("GET", "https://openapi.etsy.com/v2/shops/"+store+"/receipts/open",
-		os.Getenv("ETSY_API_KEY"), os.Getenv("ETSY_SECRET_KEY"), token,tokenSecret,nil)
-
-	req, _ := http.NewRequest("GET", "https://openapi.etsy.com/v2/shops/"+store+"/receipts?was_shopped=false&api_key="+os.Getenv("ETSY_API_KEY"), nil)
-	req.Header.Add("Authorization", authHeader)
-	resp, _ := client.Do(req)
-	defer resp.Body.Close()
-	respBody, _ := ioutil.ReadAll(resp.Body)
+	params := "api_key="+os.Getenv("ETSY_API_KEY")
+	respBody := etsyRequest("GET", "https://openapi.etsy.com/v2/shops/"+store+"/receipts/open", params,token, tokenSecret)
 
 	var jsonResponse response.EtsyUnfulfilledResponse
 	err = json.Unmarshal(respBody, &jsonResponse)
@@ -165,4 +192,19 @@ func formatEtsyOrder (resp response.EtsyUnfulfilledResponse) utils.Orders{
 		orders.Orders = append(orders.Orders, ord)
 	}
 	return orders
+}
+
+// etsyRequest util function that makes etsy api requests and returns response
+func etsyRequest (method, url, params, token, tokenSecret string) []byte {
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+	authHeader, _ := utils.GenerateOAuthHeader(method, url,
+		os.Getenv("ETSY_API_KEY"), os.Getenv("ETSY_SECRET_KEY"), token, tokenSecret,nil)
+	req, _ := http.NewRequest(method, url+params, nil)
+	req.Header.Add("Authorization", authHeader)
+	resp, _ := client.Do(req)
+	defer resp.Body.Close()
+	respBody, _ := ioutil.ReadAll(resp.Body)
+	return respBody
 }
