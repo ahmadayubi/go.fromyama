@@ -1,6 +1,6 @@
 # go.fromyama
 
-##Endpoints:
+## Endpoints:
 
 - ### /company
  
