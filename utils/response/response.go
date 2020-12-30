@@ -36,6 +36,100 @@ type PermAuth struct {
 	Code string `json:"code"`
 }
 
+type ShopifyFulfillmentRequest struct {
+	Fulfillment ShopifyFulfillmentData `json:"fulfillment"`
+	NotifyCustomer bool `json:"notify_customer"`
+}
+
+type ShopifyFulfillmentData struct {
+	LocationID int `json:"location_id"`
+	TrackingNumber string `json:"tracking_number"`
+	TrackingCompany string `json:"tracking_company"`
+}
+
+type ShopifyFulfillmentResponse struct {
+	Fulfillment struct {
+		ID              int64       `json:"id"`
+		OrderID         int64       `json:"order_id"`
+		Status          string      `json:"status"`
+		CreatedAt       string      `json:"created_at"`
+		Service         string      `json:"service"`
+		UpdatedAt       string      `json:"updated_at"`
+		TrackingCompany string      `json:"tracking_company"`
+		ShipmentStatus  interface{} `json:"shipment_status"`
+		LocationID      int64       `json:"location_id"`
+		LineItems       []struct {
+			ID                         int64         `json:"id"`
+			VariantID                  int64         `json:"variant_id"`
+			Title                      string        `json:"title"`
+			Quantity                   int           `json:"quantity"`
+			Sku                        string        `json:"sku"`
+			VariantTitle               interface{}   `json:"variant_title"`
+			Vendor                     string        `json:"vendor"`
+			FulfillmentService         string        `json:"fulfillment_service"`
+			ProductID                  int64         `json:"product_id"`
+			RequiresShipping           bool          `json:"requires_shipping"`
+			Taxable                    bool          `json:"taxable"`
+			GiftCard                   bool          `json:"gift_card"`
+			Name                       string        `json:"name"`
+			VariantInventoryManagement string        `json:"variant_inventory_management"`
+			Properties                 []interface{} `json:"properties"`
+			ProductExists              bool          `json:"product_exists"`
+			FulfillableQuantity        int           `json:"fulfillable_quantity"`
+			Grams                      int           `json:"grams"`
+			Price                      string        `json:"price"`
+			TotalDiscount              string        `json:"total_discount"`
+			FulfillmentStatus          string        `json:"fulfillment_status"`
+			PriceSet                   struct {
+				ShopMoney struct {
+					Amount       string `json:"amount"`
+					CurrencyCode string `json:"currency_code"`
+				} `json:"shop_money"`
+				PresentmentMoney struct {
+					Amount       string `json:"amount"`
+					CurrencyCode string `json:"currency_code"`
+				} `json:"presentment_money"`
+			} `json:"price_set"`
+			TotalDiscountSet struct {
+				ShopMoney struct {
+					Amount       string `json:"amount"`
+					CurrencyCode string `json:"currency_code"`
+				} `json:"shop_money"`
+				PresentmentMoney struct {
+					Amount       string `json:"amount"`
+					CurrencyCode string `json:"currency_code"`
+				} `json:"presentment_money"`
+			} `json:"total_discount_set"`
+			DiscountAllocations []interface{} `json:"discount_allocations"`
+			Duties              []interface{} `json:"duties"`
+			AdminGraphqlAPIID   string        `json:"admin_graphql_api_id"`
+			TaxLines            []struct {
+				Title    string  `json:"title"`
+				Price    string  `json:"price"`
+				Rate     float64 `json:"rate"`
+				PriceSet struct {
+					ShopMoney struct {
+						Amount       string `json:"amount"`
+						CurrencyCode string `json:"currency_code"`
+					} `json:"shop_money"`
+					PresentmentMoney struct {
+						Amount       string `json:"amount"`
+						CurrencyCode string `json:"currency_code"`
+					} `json:"presentment_money"`
+				} `json:"price_set"`
+			} `json:"tax_lines"`
+		} `json:"line_items"`
+		TrackingNumber  string   `json:"tracking_number"`
+		TrackingNumbers []string `json:"tracking_numbers"`
+		TrackingURL     string   `json:"tracking_url"`
+		TrackingUrls    []string `json:"tracking_urls"`
+		Receipt         struct {
+		} `json:"receipt"`
+		Name              string `json:"name"`
+		AdminGraphqlAPIID string `json:"admin_graphql_api_id"`
+	} `json:"fulfillment"`
+}
+
 type ShopifyUnfulfilledResponse struct {
 	Orders []struct {
 		ID                    int64         `json:"id"`

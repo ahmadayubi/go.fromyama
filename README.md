@@ -33,6 +33,7 @@
   - `GET /callback`
   - `GET /locations`
   - `GET /orders/all`
+  - `POST /fulfill`
   
 - ### /etsy
   

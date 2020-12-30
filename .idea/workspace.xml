@@ -4,14 +4,10 @@
     <list default="true" id="490b717c-c7b9-4c9b-baf7-b1fe880138c4" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/amazon/amazon.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/amazon/amazon.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/company.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/company.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/etsy/etsy.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/etsy/etsy.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/postage.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/postage.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build/go_build_go_fromyama.exe" beforeDir="false" afterPath="$PROJECT_DIR$/build/go_build_go_fromyama.exe" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/controllers/shopify/shopify.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/shopify/shopify.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/user.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/user.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/amazon.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/amazon.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/routes/etsy.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/etsy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/shopify.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/shopify.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/response/response.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/response/response.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -58,7 +54,7 @@
     <property name="go.import.settings.migrated" value="true" />
     <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$/assets/templates" />
-    <property name="settings.editor.selected.configurable" value="com.goide.configuration.GoLibrariesConfigurableProvider" />
+    <property name="settings.editor.selected.configurable" value="preferences.editor.code.editing" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">

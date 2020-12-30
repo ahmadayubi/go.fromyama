@@ -24,6 +24,65 @@ const updateShopifyTokenSql = "UPDATE companies SET shopify_store = $1 ,shopify_
 const updateTempUUIDSql = "UPDATE companies SET temp_data = $1 WHERE id = $2"
 const getShopifyTokenSql = "SELECT shopify_token, shopify_store FROM companies WHERE id = $1"
 
+// FulfillOrder /fulfill fulfills order
+// request body has order_id, location_id, notify_customer
+func FulfillOrder (w http.ResponseWriter, r *http.Request) {
+	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
+	var body map[string]string
+	err := utils.ParseRequestBody(r, &body,[]string{"order_id", "location_id", "notify_customer"})
+	if err != nil{
+		utils.ErrorResponse(w, err)
+		return
+	}
+	var encryptedToken, store string
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+
+	getShopifyQuery, err := database.DB.Prepare(getShopifyTokenSql)
+	defer getShopifyQuery.Close()
+	err = getShopifyQuery.QueryRow(tokenClaims.CompanyID).Scan(&encryptedToken, &store)
+
+	token, err := utils.Decrypt(encryptedToken)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+
+	locationID, err := strconv.Atoi(body["location_id"])
+	notifyCustomer, err := strconv.ParseBool(body["notify_customer"])
+	fulfillmentData := response.ShopifyFulfillmentRequest{
+		Fulfillment: response.ShopifyFulfillmentData{
+			LocationID: locationID,
+			TrackingNumber: body["tracking_number"],
+			TrackingCompany: body["tracking_company"],
+
+		},
+		NotifyCustomer: notifyCustomer,
+	}
+
+	fulfillmentJSON, err := json.Marshal(fulfillmentData)
+
+	req, err := http.NewRequest("POST", "https://"+store+"/admin/api/2020-10/orders/"+body["order_id"]+"/fulfillments.json", bytes.NewBuffer(fulfillmentJSON))
+	req.Header.Add("X-Shopify-Access-Token", token)
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		utils.ErrorResponse(w, err)
+		return
+	}
+	respBody, err := ioutil.ReadAll(resp.Body)
+
+	var fulfillmentResponse response.ShopifyFulfillmentResponse
+	err = json.Unmarshal(respBody, &fulfillmentResponse)
+	if err != nil || fulfillmentResponse.Fulfillment.Status == "" {
+		utils.ErrorResponse(w, err)
+		return
+	}
+
+	utils.JSONResponse(w, http.StatusOK, "Order Fulfilled")
+}
+
 // GetLocations /locations returns array of locations that shopify uses for fulfilling orders
 func GetLocations (w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
