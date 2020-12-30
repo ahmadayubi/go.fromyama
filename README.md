@@ -1,4 +1,4 @@
-# go.fromyama - REST API
+# go.fromyama - REST API ![Go](https://github.com/FromYama/go.fromyama/workflows/Go/badge.svg)
 
 ## Endpoints:
 
