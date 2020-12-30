@@ -3,9 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="490b717c-c7b9-4c9b-baf7-b1fe880138c4" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build/go_build_go_fromyama.exe" beforeDir="false" afterPath="$PROJECT_DIR$/build/go_build_go_fromyama.exe" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/etsy/etsy.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/etsy/etsy.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/postage.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/postage.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -92,21 +90,5 @@
       </map>
     </option>
     <option name="oldMeFiltersMigrated" value="true" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/controllers/amazon/amazon.go</url>
-          <line>180</line>
-          <option name="timeStamp" value="2" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/controllers/amazon/amazon.go</url>
-          <line>203</line>
-          <option name="timeStamp" value="4" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>
