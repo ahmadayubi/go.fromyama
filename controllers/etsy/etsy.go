@@ -57,7 +57,7 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 }
 
 // GetUnfulfilledOrders /orders/all returns array of unfulfilled orders from etsy
-// TODO: create endpoint for unfufilled orders and for fulfilled orders for etsy
+// TODO: create endpoint for unfulfilled orders and for fulfilled orders for etsy
 func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 
