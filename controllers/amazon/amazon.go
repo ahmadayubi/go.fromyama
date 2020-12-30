@@ -152,10 +152,11 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request){
 		Timeout: time.Second * 10,
 	}
 
-	var token, sellerID, marketplace string
+	var encryptedToken, sellerID, marketplace string
 	getTokenQuery, err := database.DB.Prepare(getAmazonTokensSql)
 	defer getTokenQuery.Close()
-	err = getTokenQuery.QueryRow(tokenClaims.CompanyID).Scan(&token, &sellerID, &marketplace)
+	err = getTokenQuery.QueryRow(tokenClaims.CompanyID).Scan(&encryptedToken, &sellerID, &marketplace)
+	token, err := utils.Decrypt(encryptedToken)
 	if err != nil{
 		utils.ErrorResponse(w, err)
 		return
@@ -223,9 +224,10 @@ func Authorize (w http.ResponseWriter, r *http.Request){
 		return
 	}
 
+	encryptedToken, err := utils.Encrypt(body["auth_token"])
 	updateAmazonQuery, err := database.DB.Prepare(updateAmazonAuthSql)
 	defer updateAmazonQuery.Close()
-	_, err = updateAmazonQuery.Exec(body["seller_id"], body["auth_token"], body["marketplace"], tokenClaims.CompanyID)
+	_, err = updateAmazonQuery.Exec(body["seller_id"], encryptedToken, body["marketplace"], tokenClaims.CompanyID)
 	if err != nil {
 		utils.ErrorResponse(w, err)
 		return
