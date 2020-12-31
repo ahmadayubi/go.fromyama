@@ -499,7 +499,7 @@ type CanadaPostPostageResponse struct {
 
 type CanadaPostLabelPurchase struct {
 	PostalCode string
-	Total string
+	Total float64
 	TrackingNumber string
 }
 
