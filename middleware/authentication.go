@@ -7,6 +7,7 @@ import (
 
 	"../utils"
 	"../utils/jwtUtil"
+	"../utils/response"
 )
 
 func ProtectedRoute(next http.Handler) http.Handler {
@@ -45,7 +46,9 @@ func ProtectedApprovedUserRoute(next http.Handler) http.Handler {
 			return
 		}
 		if !claims.Approved {
-			utils.JSONResponse(w, http.StatusUnauthorized, "Not Approved")
+			utils.JSONResponse(w, http.StatusUnauthorized, response.BasicMessage{
+				Message: "Not Approved",
+			})
 			return
 		}
 		ctx := context.WithValue(r.Context(), "claims",claims)

@@ -21,7 +21,7 @@ import (
 const createUserSql = "INSERT INTO users(name, email, password, company_id, is_approved, is_head) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id"
 const addEmployeeSql = "INSERT INTO employees(company_id, user_id) VALUES ($1, $2)"
 const loginUserSql = "SELECT id, company_id, password, is_approved FROM users WHERE email = $1"
-const getUserDetailSql = "SELECT c.id, u.email, u.name as name, c.company_name, u.id, u.is_head FROM (SELECT * FROM users WHERE email = $1) u INNER JOIN companies c on c.id = u.company_id"
+const getUserDetailSql = "SELECT c.id, u.email, u.name as name, c.company_name, u.id, u.is_head, u.is_approved FROM (SELECT * FROM users WHERE email = $1) u INNER JOIN companies c on c.id = u.company_id"
 
 // SignUpUser /signup signs user up and returns jwt token
 // request body has email, name, company_id, password
@@ -103,7 +103,7 @@ func GetUserDetails(w http.ResponseWriter, r *http.Request){
 	}
 
 	var q response.UserDetails
-	if err = query.QueryRow(claims.Email).Scan(&q.UserData.CompanyID, &q.UserData.Email,&q.UserData.Name,&q.CompanyName, &q.UserData.ID, &q.UserData.IsHead); err != nil {
+	if err = query.QueryRow(claims.Email).Scan(&q.UserData.CompanyID, &q.UserData.Email,&q.UserData.Name,&q.CompanyName, &q.UserData.ID, &q.UserData.IsHead, &q.UserData.IsApproved); err != nil {
 		utils.ErrorResponse(w, "Company Details Fetch Error")
 		return
 	}

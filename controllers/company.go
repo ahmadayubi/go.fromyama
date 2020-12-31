@@ -128,7 +128,8 @@ func GetAllEmployeeDetails (w http.ResponseWriter, r *http.Request){
 // request body has email, name, company_name, password, street, city, province_code, country, postal_code, phone
 func RegisterCompany (w http.ResponseWriter, r *http.Request){
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body,[]string{"email", "name", "company_name", "password", "street", "city", "province_code", "country", "postal_code", "phone"})
+	err := utils.ParseRequestBody(r, &body,[]string{"email", "name", "company_name", "password", "street",
+		"city", "province_code", "country", "postal_code", "phone"})
 	if err != nil{
 		utils.ErrorResponse(w, "Body Parse Error, "+err.Error())
 		return

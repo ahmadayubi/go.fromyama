@@ -256,6 +256,7 @@ func formatCanadaPostRateBody (sourcePostalCode, destPostalCode, length, width, 
 	return xml
 }
 
+// formatCanadaPostSingleRateBody util function that forms xml for price checking before purchase
 func formatCanadaPostSingleRateBody (source Shipper, destPostalCode, weight, serviceCode string) string {
 	xml := `<?xml version="1.0" encoding="utf-8"?>`
 	xml += `<mailing-scenario xmlns="http://www.canadapost.ca/ws/ship/rate-v4">`
@@ -274,6 +275,7 @@ func formatCanadaPostSingleRateBody (source Shipper, destPostalCode, weight, ser
 	return xml
 }
 
+// rateResponseToJSON converts response to json struct
 func rateResponseToJSON (resp response.CanadaPostRatesResponse) []response.CanadaPostRate{
 	var rateJSON []response.CanadaPostRate
 	for i := range resp.PriceQuote{
@@ -307,6 +309,7 @@ func rateResponseToJSON (resp response.CanadaPostRatesResponse) []response.Canad
 	return rateJSON
 }
 
+// canadaPostRequest util function to make requests to canadapost api
 func canadaPostRequest(method, url, acceptType, contentType, xmlBody string, parseTo interface{}) error{
 	req, err := http.NewRequest(method, url, bytes.NewBuffer([]byte(xmlBody)))
 	if err != nil {

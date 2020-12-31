@@ -12,6 +12,7 @@ type User struct {
 	CompanyID string `json:"company_id"`
 	IsHead bool `json:"is_head"`
 	ID string `json:"id"`
+	IsApproved bool `json:"is_approved"`
 }
 
 type Token struct {
