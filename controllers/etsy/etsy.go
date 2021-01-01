@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi"
+
 	"../../utils"
 	"../../utils/database"
 	"../../utils/jwtUtil"
@@ -25,9 +27,10 @@ const getEtsyTokenSql = "SELECT etsy_store, etsy_token, etsy_token_secret FROM c
 // TODO:need to update receipt to mark as shipped
 func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
+	orderID := chi.URLParam(r, "orderID")
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body,[]string{"order_id"})
-	if err != nil{
+	err := utils.ParseRequestBody(r, &body, nil)
+	if err != nil || orderID == ""{
 		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
@@ -46,7 +49,7 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 
 	if body["tracking_number"] != "" && body["tracking_company"] != "" {
 		params := "&tracking_code="+body["tracking_number"]+"&carrier_name="+body["tracking_company"]+"&api_key="+os.Getenv("ETSY_API_KEY")
-		addTrackingResp := etsyRequest("POST", "https://openapi.etsy.com/v2/shops/"+store+"/receipts/"+body["order_id"]+"/tracking",
+		addTrackingResp := etsyRequest("POST", "https://openapi.etsy.com/v2/shops/"+store+"/receipts/"+orderID+"/tracking",
 			params, token, tokenSecret)
 
 		utils.JSONResponse(w, http.StatusOK, addTrackingResp)

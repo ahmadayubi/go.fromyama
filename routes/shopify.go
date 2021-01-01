@@ -14,7 +14,7 @@ func ShopifyRoutes() *chi.Mux{
 	router.With(middleware.ProtectedApprovedUserRoute).Post("/generate-link",shopify.GenerateAuthURL)
 	router.With(middleware.ProtectedApprovedUserRoute).Get("/locations", shopify.GetLocations)
 
-	router.With(middleware.ProtectedApprovedUserRoute).Post("/fulfill", shopify.FulfillOrder)
+	router.With(middleware.ProtectedApprovedUserRoute).Post("/fulfill/{orderID}", shopify.FulfillOrder)
 	router.With(middleware.ProtectedApprovedUserRoute).Get("/orders/all", shopify.GetUnfulfilledOrders)
 
 	return router

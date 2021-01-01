@@ -25,7 +25,7 @@ const getCompanyDetailSql = "SELECT company_name, head_id, total_due, street, ci
 const addPaymentMethodSql = "UPDATE companies SET payment_account_id = $1 WHERE id = $2"
 const getPaymentMethodSql = "SELECT payment_account_id FROM companies WHERE id = $1"
 const addParcelSql = "INSERT INTO parcel_options (company_id, length, width, height, name, weight) VALUES ($1, $2, $3, $4, $5, $6)"
-const getParcelSql = "SELECT name, length, width, height, weight FROM parcel_options WHERE company_id = $1"
+const getParcelSql = "SELECT id, name, length, width, height, weight FROM parcel_options WHERE company_id = $1"
 const getShippingInfoSql = "SELECT company_name, street, city, province_code, country, postal_code, phone FROM companies where id = $1"
 const isEmployeeHeadSql = "SELECT is_head FROM users WHERE id = $1"
 const unregisterCompanySql = "DELETE FROM companies WHERE id = $1"
@@ -56,6 +56,7 @@ type Company struct {
 }
 
 type Parcel struct {
+	ID string `json:"id"`
 	Name string `json:"name"`
 	Length float64 `json:"length"`
 	Width float64 `json:"width"`
@@ -348,7 +349,7 @@ func GetShipper (w http.ResponseWriter, r *http.Request){
 	var allParcel []Parcel
 	for rows.Next(){
 		var p Parcel
-		err = rows.Scan(&p.Name, &p.Length, &p.Width, &p.Height, &p.Weight)
+		err = rows.Scan(&p.ID, &p.Name, &p.Length, &p.Width, &p.Height, &p.Weight)
 		allParcel = append(allParcel, p)
 	}
 

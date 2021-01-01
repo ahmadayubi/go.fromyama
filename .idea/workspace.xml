@@ -5,9 +5,11 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build/go_build_go_fromyama.exe" beforeDir="false" afterPath="$PROJECT_DIR$/build/go_build_go_fromyama.exe" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/controllers/company.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/company.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/postage.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/postage.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/controllers/user.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/user.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/middleware/authentication.go" beforeDir="false" afterPath="$PROJECT_DIR$/middleware/authentication.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/etsy/etsy.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/etsy/etsy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/shopify/shopify.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/shopify/shopify.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/etsy.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/etsy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/postage.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/postage.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/shopify.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/shopify.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/utils/response/response.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/response/response.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

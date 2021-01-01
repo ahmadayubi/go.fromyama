@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-chi/chi"
+
 	"../../utils"
 	"../../utils/database"
 	"../../utils/jwtUtil"
@@ -27,10 +29,11 @@ const getShopifyTokenSql = "SELECT shopify_token, shopify_store FROM companies W
 // FulfillOrder /fulfill fulfills order
 // request body has order_id, location_id, notify_customer
 func FulfillOrder (w http.ResponseWriter, r *http.Request) {
+	orderID := chi.URLParam(r, "orderID")
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var body map[string]string
-	err := utils.ParseRequestBody(r, &body,[]string{"order_id", "location_id", "notify_customer"})
-	if err != nil{
+	err := utils.ParseRequestBody(r, &body,[]string{"location_id", "notify_customer"})
+	if err != nil || orderID == ""{
 		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
 		return
 	}
@@ -60,7 +63,7 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 
 	fulfillmentJSON, err := json.Marshal(fulfillmentData)
 
-	respBody, err := shopifyRequest("POST", "https://"+store+"/admin/api/2020-10/orders/"+body["order_id"]+"/fulfillments.json", token, fulfillmentJSON)
+	respBody, err := shopifyRequest("POST", "https://"+store+"/admin/api/2020-10/orders/"+orderID+"/fulfillments.json", token, fulfillmentJSON)
 	if err != nil {
 		utils.ErrorResponse(w, "Shopify Request Error")
 		return

@@ -561,8 +561,8 @@ type CanadaPostRatesResponse struct {
 		WeightDetails   string `xml:"weight-details"`
 		ServiceStandard struct {
 			Text                 string `xml:",chardata"`
-			AmDelivery           string `xml:"am-delivery"`
-			GuaranteedDelivery   string `xml:"guaranteed-delivery"`
+			AmDelivery           bool `xml:"am-delivery"`
+			GuaranteedDelivery   bool `xml:"guaranteed-delivery"`
 			ExpectedTransitTime  string `xml:"expected-transit-time"`
 			ExpectedDeliveryDate string `xml:"expected-delivery-date"`
 		} `xml:"service-standard"`
@@ -574,8 +574,8 @@ type CanadaPostRate struct {
 	ServiceName  string `json:"service-name"`
 	PriceDetails CanadaPostRatePrice `json:"price-details"`
 	WeightDetails   string `json:"weight-details"`
-	AmDelivery           string `json:"am-delivery"`
-	GuaranteedDelivery   string `json:"guaranteed-delivery"`
+	AmDelivery           bool `json:"am-delivery"`
+	GuaranteedDelivery   bool `json:"guaranteed-delivery"`
 	ExpectedTransitTime  string `json:"expected-transit-time"`
 	ExpectedDeliveryDate string `json:"expected-delivery-date"`
 }
