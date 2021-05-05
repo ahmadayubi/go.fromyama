@@ -10,10 +10,10 @@ import (
 	"net/smtp"
 	"os"
 
-	"../utils"
-	"../utils/database"
-	"../utils/jwtUtil"
-	"../utils/response"
+	"go.fromyama/utils"
+	"go.fromyama/utils/database"
+	"go.fromyama/utils/jwtUtil"
+	"go.fromyama/utils/response"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -22,6 +22,13 @@ const createUserSql = "INSERT INTO users(name, email, password, company_id, is_a
 const addEmployeeSql = "INSERT INTO employees(company_id, user_id) VALUES ($1, $2)"
 const loginUserSql = "SELECT id, company_id, password, is_approved FROM users WHERE email = $1"
 const getUserDetailSql = "SELECT c.id, u.email, u.name as name, c.company_name, u.id, u.is_head, u.is_approved FROM (SELECT * FROM users WHERE email = $1) u INNER JOIN companies c on c.id = u.company_id"
+
+type userError struct {
+	s string
+}
+func (e *userError) Error() string{
+	return e.s
+}
 
 // SignUpUser /signup signs user up and returns jwt token
 // request body has email, name, company_id, password
@@ -121,10 +128,28 @@ func ComparePassword(hash, password string, c chan bool){
 
 // SignUpUserAndGenerateToken util function that signs up user and generates the jwt token
 func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,name, email, password, companyID string) (string, response.Token, error) {
+
+	takenQuery, err := database.DB.Prepare("SELECT exists(SELECT 1 from users where email=$1)")
+	defer takenQuery.Close()
+	if err != nil {
+		utils.ErrorResponse(w, "Check Existing Email Error")
+		return "", response.Token{}, err
+	}
+	var taken bool
+	err = takenQuery.QueryRow(email).Scan(&taken)
+	if taken{
+		utils.JSONResponse(w, http.StatusConflict, response.BasicMessage{
+			Message: "Email Already In Use",
+		})
+		return "", response.Token{}, &userError{"Email Already In Use"}
+	}
+
 	userCreateQuery, err := database.DB.Prepare(createUserSql)
 	defer userCreateQuery.Close()
 	if err != nil{
-		utils.ErrorResponse(w, "Create User Error")
+		utils.JSONResponse(w, http.StatusConflict, response.BasicMessage{
+			Message: "Creating User Error",
+		})
 		return "", response.Token{}, err
 	}
 	hashByte, err := bcrypt.GenerateFromPassword([]byte(password), 10)

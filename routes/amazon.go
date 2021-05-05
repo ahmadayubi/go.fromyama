@@ -3,8 +3,8 @@ package routes
 import (
 	"github.com/go-chi/chi"
 
-"../controllers/amazon"
-"../middleware"
+	"go.fromyama/controllers/amazon"
+	"go.fromyama/middleware"
 )
 
 

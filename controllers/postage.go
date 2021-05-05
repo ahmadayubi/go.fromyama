@@ -12,13 +12,13 @@ import (
 	"strconv"
 	"time"
 
-	"../utils"
-	"../utils/database"
-	"../utils/jwtUtil"
-	"../utils/response"
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
 	"github.com/stripe/stripe-go/refund"
+	"go.fromyama/utils"
+	"go.fromyama/utils/database"
+	"go.fromyama/utils/jwtUtil"
+	"go.fromyama/utils/response"
 )
 
 const getShippingInfoAndPaymentSql = "SELECT company_name, street, city, province_code, country, postal_code, phone, payment_account_id, email FROM companies c INNER JOIN users u on c.head_id = u.id where c.id = $1"

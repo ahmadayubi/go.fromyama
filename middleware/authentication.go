@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"../utils"
-	"../utils/jwtUtil"
-	"../utils/response"
+	"go.fromyama/utils"
+	"go.fromyama/utils/jwtUtil"
+	"go.fromyama/utils/response"
 )
 
 func ProtectedRoute(next http.Handler) http.Handler {

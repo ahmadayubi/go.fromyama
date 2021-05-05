@@ -3,8 +3,8 @@ package routes
 import (
 	"github.com/go-chi/chi"
 
-	"../controllers"
-	"../middleware"
+	"go.fromyama/controllers"
+	"go.fromyama/middleware"
 )
 
 func PostageRoutes() *chi.Mux{

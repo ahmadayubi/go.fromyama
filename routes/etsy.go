@@ -1,10 +1,10 @@
 package routes
 
 import (
-"github.com/go-chi/chi"
+	"github.com/go-chi/chi"
 
-"../controllers/etsy"
-"../middleware"
+	"go.fromyama/controllers/etsy"
+	"go.fromyama/middleware"
 )
 
 func EtsyRoutes() *chi.Mux{

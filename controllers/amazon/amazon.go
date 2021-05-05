@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"../../utils"
-	"../../utils/database"
-	"../../utils/jwtUtil"
-	"../../utils/response"
+	"go.fromyama/utils"
+	"go.fromyama/utils/database"
+	"go.fromyama/utils/jwtUtil"
+	"go.fromyama/utils/response"
 )
 
 const updateAmazonAuthSql = "UPDATE companies SET amazon_seller_id = $1, amazon_auth_token = $2, amazon_marketplace = $3 WHERE id = $4"

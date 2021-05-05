@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"../utils/response"
+	"go.fromyama/utils/response"
 
 	"github.com/google/uuid"
 )

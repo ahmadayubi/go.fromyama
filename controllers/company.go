@@ -7,13 +7,13 @@ import (
 
 	"github.com/go-chi/chi"
 
-	"../utils"
-	"../utils/database"
-	"../utils/jwtUtil"
-	"../utils/response"
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
 	"github.com/stripe/stripe-go/customer"
+	"go.fromyama/utils"
+	"go.fromyama/utils/database"
+	"go.fromyama/utils/jwtUtil"
+	"go.fromyama/utils/response"
 )
 
 const getAllEmployeesSql = "SELECT email, name, is_approved, id FROM employees INNER JOIN users u on employees.user_id = u.id WHERE u.company_id =  $1"

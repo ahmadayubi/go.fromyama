@@ -15,11 +15,11 @@ import (
 
 	"github.com/go-chi/chi"
 
-	"../../utils"
-	"../../utils/database"
-	"../../utils/jwtUtil"
-	"../../utils/response"
 	"github.com/google/uuid"
+	"go.fromyama/utils"
+	"go.fromyama/utils/database"
+	"go.fromyama/utils/jwtUtil"
+	"go.fromyama/utils/response"
 )
 
 const updateShopifyTokenSql = "UPDATE companies SET shopify_store = $1 ,shopify_token = $2, temp_data = null WHERE temp_data = $3"

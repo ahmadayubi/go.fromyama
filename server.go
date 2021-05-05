@@ -6,8 +6,8 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"./routes"
-	"./utils/database"
+	"go.fromyama/routes"
+	"go.fromyama/utils/database"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"

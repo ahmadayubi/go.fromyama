@@ -3,8 +3,8 @@ package routes
 import (
 	"github.com/go-chi/chi"
 
-"../controllers/shopify"
-"../middleware"
+	"go.fromyama/controllers/shopify"
+	"go.fromyama/middleware"
 )
 
 func ShopifyRoutes() *chi.Mux{

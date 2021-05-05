@@ -4,13 +4,37 @@
     <list default="true" id="490b717c-c7b9-4c9b-baf7-b1fe880138c4" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/build/go_build_go_fromyama.exe" beforeDir="false" afterPath="$PROJECT_DIR$/build/go_build_go_fromyama.exe" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/amazon/amazon.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/amazon/amazon.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/controllers/company.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/company.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/controllers/etsy/etsy.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/etsy/etsy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/postage.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/postage.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/controllers/shopify/shopify.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/shopify/shopify.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/controllers/user.go" beforeDir="false" afterPath="$PROJECT_DIR$/controllers/user.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/middleware/authentication.go" beforeDir="false" afterPath="$PROJECT_DIR$/middleware/authentication.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/windows_amd64/github.com/basgys/goxml2json.a" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/windows_amd64/github.com/dghubble/oauth1.a" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/windows_amd64/github.com/google/uuid.a" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/windows_amd64/github.com/jackc/pgx.a" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/windows_amd64/github.com/jackc/pgx/internal/sanitize.a" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/windows_amd64/github.com/jackc/pgx/stdlib.a" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/windows_amd64/github.com/stripe/stripe-go.a" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/windows_amd64/github.com/stripe/stripe-go/charge.a" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/windows_amd64/github.com/stripe/stripe-go/customer.a" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/windows_amd64/github.com/stripe/stripe-go/form.a" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pkg/windows_amd64/github.com/stripe/stripe-go/refund.a" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/amazon.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/amazon.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/company.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/company.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routes/etsy.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/etsy.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routes/postage.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/postage.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/routes/shopify.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/shopify.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/response/response.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/response/response.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/routes/user.go" beforeDir="false" afterPath="$PROJECT_DIR$/routes/user.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/server.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/basgys/goxml2json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/dghubble/oauth1" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/google/uuid" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/jackc/pgx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/github.com/stripe/stripe-go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/utils.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/utils.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -26,7 +50,7 @@
       </list>
     </option>
   </component>
-  <component name="GOROOT" url="file://$PROJECT_DIR$/../../../../../../Go" />
+  <component name="GOROOT" url="file://$PROJECT_DIR$/../../../../../../Go/go1.16.3" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -41,7 +65,7 @@
   <component name="GoLibraries">
     <option name="urls">
       <list>
-        <option value="file://$PROJECT_DIR$" />
+        <option value="file://$USER_HOME$/go/src" />
       </list>
     </option>
   </component>
@@ -60,12 +84,12 @@
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
-    <property name="configurable..is.expanded" value="false" />
+    <property name="configurable..is.expanded" value="true" />
     <property name="configurable.GoLibrariesConfigurable.is.expanded" value="true" />
     <property name="go.import.settings.migrated" value="true" />
     <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/assets/templates" />
-    <property name="settings.editor.selected.configurable" value="preferences.editor.code.editing" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="settings.editor.selected.configurable" value="com.goide.configuration.GoLibrariesConfigurableProvider" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
@@ -105,5 +129,8 @@
       </map>
     </option>
     <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="VgoProject">
+    <integration-enabled>true</integration-enabled>
   </component>
 </project>

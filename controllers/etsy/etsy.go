@@ -11,10 +11,10 @@ import (
 
 	"github.com/go-chi/chi"
 
-	"../../utils"
-	"../../utils/database"
-	"../../utils/jwtUtil"
-	"../../utils/response"
+	"go.fromyama/utils"
+	"go.fromyama/utils/database"
+	"go.fromyama/utils/jwtUtil"
+	"go.fromyama/utils/response"
 )
 
 const addEtsyTempSql = "UPDATE companies SET etsy_store = $1,temp_data = $2, etsy_token = $3 WHERE id = $4"
