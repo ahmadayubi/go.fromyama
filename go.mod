@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/cockroachdb/apd v1.1.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/go-chi/chi v1.5.4
+	github.com/go-chi/chi/v5 v5.0.3
 	github.com/go-chi/render v1.0.1
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/google/uuid v1.2.0

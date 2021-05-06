@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
