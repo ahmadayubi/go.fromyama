@@ -51,7 +51,7 @@ func ProtectedApprovedUserRoute(next http.Handler) http.Handler {
 			})
 			return
 		}
-		ctx := context.WithValue(r.Context(), "claims",claims)
+		ctx := context.WithValue(r.Context(), "claims", *claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

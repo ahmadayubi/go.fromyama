@@ -51,7 +51,7 @@ func main() {
 		log.Printf("%s, %s\n", method, route)
 		return nil
 	}
-	if err := chi.Walk(router, walkF); err != nil {
+	if err = chi.Walk(router, walkF); err != nil {
 		log.Fatalf("Logging Error: %s",err.Error())
 	}
 	log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), router))
