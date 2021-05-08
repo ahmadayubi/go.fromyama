@@ -23,7 +23,7 @@ func ProtectedRoute(next http.Handler) http.Handler {
 		if err != nil {
 			response.Forbidden(w)
 		} else {
-			ctx := context.WithValue(r.Context(), "claims",claims)
+			ctx := context.WithValue(r.Context(), "claims", *claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
