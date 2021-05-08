@@ -34,7 +34,7 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body,[]string{"location_id", "notify_customer"})
 	if err != nil || orderID == ""{
-		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
+		response.Error(w, "Body Parse Error, " + err.Error())
 		return
 	}
 	var encryptedToken, store string
@@ -45,7 +45,7 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 
 	token, err := utils.Decrypt(encryptedToken)
 	if err != nil {
-		utils.ErrorResponse(w, "Hash Error")
+		response.Error(w, "Hash Error")
 		return
 	}
 
@@ -65,18 +65,18 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 
 	respBody, err := shopifyRequest("POST", "https://"+store+"/admin/api/2020-10/orders/"+orderID+"/fulfillments.json", token, fulfillmentJSON)
 	if err != nil {
-		utils.ErrorResponse(w, "Shopify Request Error")
+		response.Error(w, "Shopify Request Error")
 		return
 	}
 
 	var fulfillmentResponse response.ShopifyFulfillmentResponse
 	err = json.Unmarshal(respBody, &fulfillmentResponse)
 	if err != nil || fulfillmentResponse.Fulfillment.Status == "" {
-		utils.ErrorResponse(w, "Marshal Error")
+		response.Error(w, "Marshal Error")
 		return
 	}
 
-	utils.JSONResponse(w, http.StatusOK, response.BasicMessage{Message: "Order Fulfilled"})
+	response.JSON(w, http.StatusOK, response.BasicMessage{Message: "Order Fulfilled"})
 }
 
 // GetLocations /locations returns array of locations that shopify uses for fulfilling orders
@@ -90,23 +90,23 @@ func GetLocations (w http.ResponseWriter, r *http.Request){
 
 	token, err := utils.Decrypt(encryptedToken)
 	if err != nil {
-		utils.ErrorResponse(w, "Hash Error")
+		response.Error(w, "Hash Error")
 		return
 	}
 
-	respBody,err := shopifyRequest("GET", "https://"+store+"/admin/api/2020-04/locations.json", token, nil)
+	respBody, err := shopifyRequest("GET", "https://"+store+"/admin/api/2020-04/locations.json", token, nil)
 	if err != nil {
-		utils.ErrorResponse(w, "Shopify Request Error")
+		response.Error(w, "Shopify Request Error")
 		return
 	}
 
 	var jsonResp response.LocationResponse
 	err = json.Unmarshal(respBody, &jsonResp)
 	if err != nil {
-		utils.ErrorResponse(w, "Unmarshal Error")
-		return
+		response.Error(w, "Unmarshal Error")
+	} else {
+		response.JSON(w, http.StatusOK, jsonResp)
 	}
-	utils.JSONResponse(w, http.StatusOK, jsonResp)
 }
 
 // GetUnfulfilledOrders /orders/all returns all unfulfilled orders
@@ -121,23 +121,23 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 
 	token, err := utils.Decrypt(encryptedToken)
 	if err != nil {
-		utils.ErrorResponse(w, "Hash Error")
+		response.Error(w, "Hash Error")
 		return
 	}
 
 	respBody, err := shopifyRequest("GET", "https://"+store+"/admin/api/2020-04/orders.json?updated_at_min=2005-07-31T15:57:11-04:00&fulfillment_status=unfulfilled", token, nil)
 	if err != nil {
-		utils.ErrorResponse(w, "Shopify Request Error")
+		response.Error(w, "Shopify Request Error")
 		return
 	}
 
 	var jsonResp response.ShopifyUnfulfilledResponse
 	err = json.Unmarshal(respBody, &jsonResp)
 	if err != nil {
-		utils.ErrorResponse(w, "Unmarshal Error")
-		return
+		response.Error(w, "Unmarshal Error")
+	} else {
+		response.JSON(w, http.StatusOK, formatShopifyOrder(jsonResp))
 	}
-	utils.JSONResponse(w, http.StatusOK, formatShopifyOrder(jsonResp))
 }
 
 // GenerateAuthURL /generate-link generates authentication link for shopify stores
@@ -148,7 +148,7 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request){
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body,[]string{"shop"})
 	if err != nil{
-		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
+		response.Error(w, "Body Parse Error, " + err.Error())
 		return
 	}
 	uid := uuid.New()
@@ -156,14 +156,14 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request){
 	defer updateTempQuery.Close()
 	_, err = updateTempQuery.Exec(uid.String(), tokenClaims.CompanyID)
 	if err != nil {
-		utils.ErrorResponse(w, "Update UUID Error")
+		response.Error(w, "Update UUID Error")
 		return
 	}
-	var url utils.UrlResponse
+	var url response.UrlResponse
 	url.Url = fmt.Sprintf("https://%s.myshopify.com/admin/oauth/authorize?client_id=%s&scope=read_orders,write_orders,read_customers&redirect_uri=%s/shopify/callback&state=%s&grant_options[]=",
 		body["shop"], os.Getenv("SHOP_API_KEY"), os.Getenv("BASE_URL"), uid.String())
 
-	utils.JSONResponse(w, http.StatusOK, url)
+	response.JSON(w, http.StatusOK, url)
 }
 
 // Callback /callback authenticates company shopify store and encrypts tokens
@@ -188,7 +188,7 @@ func Callback(w http.ResponseWriter, r *http.Request){
 		body, err := json.Marshal(reqBody)
 		req, err := http.NewRequest("POST", "https://"+shop+"/admin/oauth/access_token",bytes.NewBuffer(body))
 		if err != nil {
-			utils.ErrorResponse(w, "Token Error")
+			response.Error(w, "Token Error")
 			return
 		}
 		req.Header.Set("Content-Type", "application/json")
@@ -200,11 +200,10 @@ func Callback(w http.ResponseWriter, r *http.Request){
 		var jsonResp response.CallbackResponse
 		err = json.Unmarshal(respBody, &jsonResp)
 		if err != nil {
-			utils.ErrorResponse(w, "Unmarshal Error")
+			response.Error(w, "Unmarshal Error")
 			return
-		}
-		if jsonResp.AccessToken == "" {
-			utils.ForbiddenResponse(w)
+		} else if jsonResp.AccessToken == "" {
+			response.Forbidden(w)
 			return
 		}
 
@@ -213,21 +212,19 @@ func Callback(w http.ResponseWriter, r *http.Request){
 		defer updateShopifyTokenQuery.Close()
 		_, err = updateShopifyTokenQuery.Exec(shop, encryptedToken, state)
 		if err != nil {
-			utils.ErrorResponse(w, "Update Token Error")
-			return
+			response.Error(w, "Update Token Error")
+		} else {
+			response.JSON(w, http.StatusAccepted, response.BasicMessage{Message: "Successfully Authenticated"})
 		}
-
-		utils.JSONResponse(w, http.StatusAccepted, response.BasicMessage{Message: "Successfully Authenticated"})
-		return
 	}
 }
 
 // formatShopifyOrder util function that takes response from shopify and formats to fy order
-func formatShopifyOrder (resp response.ShopifyUnfulfilledResponse) utils.Orders {
-	var orders utils.Orders
+func formatShopifyOrder (resp response.ShopifyUnfulfilledResponse) response.Orders {
+	var orders response.Orders
 
 	for i := range resp.Orders {
-		add := utils.Address{
+		add := response.Address{
 			Name: resp.Orders[i].ShippingAddress.Name,
 			Address1: resp.Orders[i].ShippingAddress.Address1,
 			Address2: resp.Orders[i].ShippingAddress.Address2,
@@ -236,9 +233,9 @@ func formatShopifyOrder (resp response.ShopifyUnfulfilledResponse) utils.Orders 
 			Country: resp.Orders[i].ShippingAddress.Country,
 			PostalCode: resp.Orders[i].ShippingAddress.Zip,
 		}
-		var items []utils.Item
+		var items []response.Item
 		for j := range resp.Orders[i].LineItems{
-			items = append(items, utils.Item{
+			items = append(items, response.Item{
 				Sku:      resp.Orders[i].LineItems[j].Sku,
 				Title:    resp.Orders[i].LineItems[j].Title,
 				Quantity: strconv.Itoa(resp.Orders[i].LineItems[j].Quantity),
@@ -246,7 +243,7 @@ func formatShopifyOrder (resp response.ShopifyUnfulfilledResponse) utils.Orders 
 			})
 		}
 
-		ord := utils.Order{
+		ord := response.Order{
 			Type:    "Shopify",
 			OrderID: strconv.FormatInt(resp.Orders[i].ID, 10),
 			CreatedAt: resp.Orders[i].CreatedAt,

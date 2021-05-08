@@ -37,7 +37,7 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request){
 	err = getTokenQuery.QueryRow(tokenClaims.CompanyID).Scan(&encryptedToken, &sellerID, &marketplace)
 	token, err := utils.Decrypt(encryptedToken)
 	if err != nil{
-		utils.ErrorResponse(w, "Hash Error")
+		response.Error(w, "Hash Error")
 		return
 	}
 
@@ -60,12 +60,12 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request){
 	resp, _ := client.Do(req)
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	if err = xml.Unmarshal(respBody, &amazonOrders); err != nil{
-		utils.ErrorResponse(w, "Unmarshal Error")
+		response.Error(w, "Unmarshal Error")
 		return
 	}
 	resp.Body.Close()
 
-	var orderItems [][]utils.Item
+	var orderItems [][]response.Item
 	if amazonOrders.ListOrdersResult.Orders[0].Order.AmazonOrderId != "" {
 		for i := range amazonOrders.ListOrdersResult.Orders {
 			detailURL := formatAmazonURL("POST", "/Orders/2013-09-01", marketplace, map[string]string{
@@ -84,14 +84,14 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request){
 			respD, _ := client.Do(reqD)
 			respDBody, _ := ioutil.ReadAll(respD.Body)
 			if err = xml.Unmarshal(respDBody, &orderDetails); err != nil {
-				utils.ErrorResponse(w, "Unmarshal Error")
+				response.Error(w, "Unmarshal Error")
 				return
 			}
 			respD.Body.Close()
 			orderItems = append(orderItems, formatAmazonItem(orderDetails))
 		}
 	}
-	utils.JSONResponse(w, http.StatusOK, formatAmazonOrder(amazonOrders,orderItems))
+	response.JSON(w, http.StatusOK, formatAmazonOrder(amazonOrders,orderItems))
 }
 
 // Authorize /authorize saves amazon tokens to company account
@@ -101,7 +101,7 @@ func Authorize (w http.ResponseWriter, r *http.Request){
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body,[]string{"seller_id", "auth_token", "marketplace"})
 	if err != nil{
-		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
+		response.Error(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
@@ -110,11 +110,10 @@ func Authorize (w http.ResponseWriter, r *http.Request){
 	defer updateAmazonQuery.Close()
 	_, err = updateAmazonQuery.Exec(body["seller_id"], encryptedToken, body["marketplace"], tokenClaims.CompanyID)
 	if err != nil {
-		utils.ErrorResponse(w, "Update Token Error")
-		return
+		response.Error(w, "Update Token Error")
+	} else {
+		response.JSON(w, http.StatusAccepted, response.BasicMessage{Message: "Amazon Store Connected."})
 	}
-
-	utils.JSONResponse(w, http.StatusAccepted, response.BasicMessage{Message: "Amazon Store Connected."})
 }
 
 // formatAmazonURL generates amazon url and signature for requests
@@ -145,11 +144,11 @@ func formatAmazonURL (method, path, host string, params map[string]string) strin
 }
 
 // formatAmazonOrder formats amazon orders response and returns fy orders
-func formatAmazonOrder (resp response.AmazonUnfulfilledResponse, items [][]utils.Item) utils.Orders{
-	var orders utils.Orders
+func formatAmazonOrder (resp response.AmazonUnfulfilledResponse, items [][]response.Item) response.Orders{
+	var orders response.Orders
 	if len(items) > 0 {
 		for i := range resp.ListOrdersResult.Orders {
-			ord := utils.Order{
+			ord := response.Order{
 				Type:      "Amazon",
 				OrderID:   resp.ListOrdersResult.Orders[i].Order.AmazonOrderId,
 				CreatedAt: resp.ListOrdersResult.Orders[i].Order.PurchaseDate,
@@ -160,7 +159,7 @@ func formatAmazonOrder (resp response.AmazonUnfulfilledResponse, items [][]utils
 				Name:      resp.ListOrdersResult.Orders[i].Order.AmazonOrderId,
 				WasPaid:   true,
 				Items:     items[i],
-				ShippingAddress: utils.Address{
+				ShippingAddress: response.Address{
 					City:       resp.ListOrdersResult.Orders[i].Order.ShippingAddress.City,
 					PostalCode: resp.ListOrdersResult.Orders[i].Order.ShippingAddress.PostalCode,
 					Province:   resp.ListOrdersResult.Orders[i].Order.ShippingAddress.StateOrRegion,
@@ -174,10 +173,10 @@ func formatAmazonOrder (resp response.AmazonUnfulfilledResponse, items [][]utils
 }
 
 // formatAmazonItem formats amazon response for item details and returns fy items
-func formatAmazonItem (resp response.AmazonOrderDetailResponse) []utils.Item {
-	var items []utils.Item
+func formatAmazonItem (resp response.AmazonOrderDetailResponse) []response.Item {
+	var items []response.Item
 	for i := range resp.ListOrderItemsResult.OrderItems {
-		var item utils.Item
+		var item response.Item
 		item.Sku = resp.ListOrderItemsResult.OrderItems[i].OrderItem.SellerSKU
 		item.Price = resp.ListOrderItemsResult.OrderItems[i].OrderItem.ItemPrice.Amount
 		item.Quantity = resp.ListOrderItemsResult.OrderItems[i].OrderItem.QuantityOrdered

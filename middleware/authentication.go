@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"go.fromyama/utils"
 	"go.fromyama/utils/jwtUtil"
 	"go.fromyama/utils/response"
 )
@@ -15,18 +14,18 @@ func ProtectedRoute(next http.Handler) http.Handler {
 		reqToken := r.Header.Get("Authorization")
 		splitHeader := strings.Split(reqToken, "Bearer ")
 		if reqToken == "" || len(splitHeader) != 2{
-			utils.ForbiddenResponse(w)
+			response.Forbidden(w)
 			return
 		}
 
 		token := splitHeader[1]
 		claims, err := jwtUtil.CheckAndParseToken(token)
 		if err != nil {
-			utils.ForbiddenResponse(w)
-			return
+			response.Forbidden(w)
+		} else {
+			ctx := context.WithValue(r.Context(), "claims",claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		}
-		ctx := context.WithValue(r.Context(), "claims",claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -35,23 +34,21 @@ func ProtectedApprovedUserRoute(next http.Handler) http.Handler {
 		reqToken := r.Header.Get("Authorization")
 		splitHeader := strings.Split(reqToken, "Bearer ")
 		if reqToken == "" || len(splitHeader) != 2{
-			utils.ForbiddenResponse(w)
+			response.Forbidden(w)
 			return
 		}
 
 		token := splitHeader[1]
 		claims, err := jwtUtil.CheckAndParseToken(token)
 		if err != nil {
-			utils.ForbiddenResponse(w)
-			return
-		}
-		if !claims.Approved {
-			utils.JSONResponse(w, http.StatusUnauthorized, response.BasicMessage{
+			response.Forbidden(w)
+		} else if !claims.Approved {
+			response.JSON(w, http.StatusUnauthorized, response.BasicMessage{
 				Message: "Not Approved",
 			})
-			return
+		} else {
+			ctx := context.WithValue(r.Context(), "claims", *claims)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		}
-		ctx := context.WithValue(r.Context(), "claims", *claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

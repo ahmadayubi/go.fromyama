@@ -31,7 +31,7 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body, nil)
 	if err != nil || orderID == ""{
-		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
+		response.Error(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
@@ -43,20 +43,14 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 	token, err := utils.Decrypt(encryptedToken)
 	tokenSecret, err := utils.Decrypt(encryptedSecret)
 	if err != nil {
-		utils.ErrorResponse(w, "Hash Error")
-		return
-	}
-
-	if body["tracking_number"] != "" && body["tracking_company"] != "" {
+		response.Error(w, "Hash Error")
+	} else if body["tracking_number"] != "" && body["tracking_company"] != "" {
 		params := "&tracking_code="+body["tracking_number"]+"&carrier_name="+body["tracking_company"]+"&api_key="+os.Getenv("ETSY_API_KEY")
 		addTrackingResp := etsyRequest("POST", "https://openapi.etsy.com/v2/shops/"+store+"/receipts/"+orderID+"/tracking",
 			params, token, tokenSecret)
 
-		utils.JSONResponse(w, http.StatusOK, addTrackingResp)
+		response.JSON(w, http.StatusOK, addTrackingResp)
 	}
-
-
-
 }
 
 // GetUnfulfilledOrders /orders/all returns array of unfulfilled orders from etsy
@@ -72,7 +66,7 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	token, err := utils.Decrypt(encryptedToken)
 	tokenSecret, err := utils.Decrypt(encryptedSecret)
 	if err != nil {
-		utils.ErrorResponse(w, "Hash Error")
+		response.Error(w, "Hash Error")
 		return
 	}
 
@@ -84,13 +78,11 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	var jsonResponse response.EtsyUnfulfilledResponse
 	err = json.Unmarshal(respBody, &jsonResponse)
 	if err != nil {
-		utils.ErrorResponse(w, "Unmarshal Error")
-		return
+		response.Error(w, "Unmarshal Error")
+	} else {
+		jsonOrders := formatEtsyOrder(jsonResponse)
+		response.JSON(w, http.StatusOK, jsonOrders)
 	}
-
-	jsonOrders := formatEtsyOrder(jsonResponse)
-
-	utils.JSONResponse(w, http.StatusOK, jsonOrders)
 }
 
 // GenerateAuthURL /generate-link generates authentication link for etsy
@@ -100,7 +92,7 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request) {
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body,[]string{"shop"})
 	if err != nil{
-		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
+		response.Error(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
@@ -120,23 +112,22 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request) {
 
 	values, err := url.ParseQuery(string(respBody))
 	if err != nil {
-		utils.ErrorResponse(w, "Etsy Request Error")
+		response.Error(w, "Etsy Request Error")
 		return
 	}
 	requestToken := values.Get("oauth_token")
 	requestSecret := values.Get("oauth_token_secret")
-	var authUrl utils.UrlResponse
+	var authUrl response.UrlResponse
 	authUrl.Url, _ = url.QueryUnescape(strings.Split(string(respBody),"login_url=")[1])
 
 	addTempQuery, err := database.DB.Prepare(addEtsyTempSql)
 	defer addTempQuery.Close()
 	_, err = addTempQuery.Exec(body["shop"], requestSecret, requestToken, tokenClaims.CompanyID)
 	if err != nil {
-		utils.ErrorResponse(w, "Add Token Error")
-		return
+		response.Error(w, "Add Token Error")
+	} else {
+		response.JSON(w, 200, authUrl)
 	}
-
-	utils.JSONResponse(w, 200, authUrl)
 }
 
 // Callback /callback used to authenticate user and store
@@ -153,7 +144,7 @@ func Callback(w http.ResponseWriter, r *http.Request){
 	defer findCompanySql.Close()
 	err = findCompanySql.QueryRow(authToken).Scan(&companyID, &tempSecret)
 	if err != nil {
-		utils.ErrorResponse(w, "Find Company Token")
+		response.Error(w, "Find Company Token")
 		return
 	}
 
@@ -170,7 +161,7 @@ func Callback(w http.ResponseWriter, r *http.Request){
 
 	values, err := url.ParseQuery(string(respBody))
 	if err != nil {
-		utils.ErrorResponse(w, "Etsy Request Error")
+		response.Error(w, "Etsy Request Error")
 		return
 	}
 	pAuthToken, err := utils.Encrypt(values.Get("oauth_token"))
@@ -180,19 +171,18 @@ func Callback(w http.ResponseWriter, r *http.Request){
 	defer setTokenQuery.Close()
 	_, err = setTokenQuery.Exec(pAuthToken, pAuthSecret, companyID)
 	if err != nil {
-		utils.ErrorResponse(w, "Update Token Error")
-		return
+		response.Error(w, "Update Token Error")
+	} else {
+		response.JSON(w, http.StatusAccepted, response.BasicMessage{Message: "Etsy Store Added"})
 	}
-
-	utils.JSONResponse(w, http.StatusAccepted, response.BasicMessage{Message: "Etsy Store Added"})
 }
 
 // formatEtsyOrder util function converts etsy response to fy orders
-func formatEtsyOrder (resp response.EtsyUnfulfilledResponse) utils.Orders{
-	var orders utils.Orders
+func formatEtsyOrder (resp response.EtsyUnfulfilledResponse) response.Orders{
+	var orders response.Orders
 
 	for i := range resp.Results {
-		ord := utils.Order{
+		ord := response.Order{
 			Type: "Etsy",
 			OrderID: string(rune(i)),
 		}

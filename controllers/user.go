@@ -36,7 +36,7 @@ func SignUpUser(w http.ResponseWriter, r *http.Request){
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body, []string{"email", "name", "company_id", "password"})
 	if err != nil{
-		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
+		response.Error(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
@@ -45,7 +45,7 @@ func SignUpUser(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	utils.JSONResponse(w, http.StatusCreated, token)
+	response.JSON(w, http.StatusCreated, *token)
 }
 
 // LoginUser /login checks user email and password and returns jwt token
@@ -54,14 +54,14 @@ func LoginUser(w http.ResponseWriter, r *http.Request){
 	var body map[string]string
 	err := utils.ParseRequestBody(r, &body, []string{"email", "password"})
 	if err != nil{
-		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
+		response.Error(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
 	query, err := database.DB.Prepare(loginUserSql)
 	defer query.Close()
 	if err != nil{
-		utils.ErrorResponse(w, "User Credential Fetch Error")
+		response.Error(w, "User Credential Fetch Error")
 		return
 	}
 
@@ -70,12 +70,15 @@ func LoginUser(w http.ResponseWriter, r *http.Request){
 	var approved bool
 	err = row.Scan(&id, &companyID, &hash, &approved)
 	if err != nil {
-		utils.ErrorResponse(w, "User Credential Fetch Error")
+		response.Error(w, "User Credential Fetch Error")
 		return
 	}
 
 	authChannel := make(chan bool)
-	go ComparePassword(hash, body["password"], authChannel)
+
+	go func(hash, pass string, c chan bool) {
+		c <- bcrypt.CompareHashAndPassword([]byte(hash), []byte(pass)) == nil
+	}(hash, body["password"], authChannel)
 
 	tokenClaims := jwtUtil.TokenClaims{
 		Email: body["email"],
@@ -85,18 +88,15 @@ func LoginUser(w http.ResponseWriter, r *http.Request){
 	}
 
 	token, err := jwtUtil.GenerateToken(tokenClaims)
-	if authorized := <-authChannel;err != nil || !(authorized) {
-		if !authorized {
-			utils.ForbiddenResponse(w)
-		} else {
-			utils.ErrorResponse(w, "Token Generation Error")
-		}
-		return
+	if !(<-authChannel) {
+		response.Forbidden(w)
+	} else if err != nil {
+		response.Error(w, "Token Generation Error")
+	} else {
+		response.JSON(w, http.StatusAccepted, response.Token{
+			Raw: token,
+		})
 	}
-
-	utils.JSONResponse(w, http.StatusAccepted, response.Token{
-		Raw: token,
-	})
 }
 
 // GetUserDetails /details returns the users details
@@ -105,70 +105,61 @@ func GetUserDetails(w http.ResponseWriter, r *http.Request){
 	defer query.Close()
 	claims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	if err != nil{
-		utils.ErrorResponse(w, "Body Parse Error, " + err.Error())
+		response.Error(w, "Body Parse Error, " + err.Error())
 		return
 	}
 
 	var q response.UserDetails
 	if err = query.QueryRow(claims.Email).Scan(&q.UserData.CompanyID, &q.UserData.Email,&q.UserData.Name,&q.CompanyName, &q.UserData.ID, &q.UserData.IsHead, &q.UserData.IsApproved); err != nil {
-		utils.ErrorResponse(w, "Company Details Fetch Error")
+		response.Error(w, "Company Details Fetch Error")
 		return
 	}
-	utils.JSONResponse(w, http.StatusAccepted, q)
-}
-
-// ComparePassword util function that compares hash to password
-func ComparePassword(hash, password string, c chan bool){
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	if err != nil {
-		c <- false
-	}
-	c <- true
+	response.JSON(w, http.StatusAccepted, q)
 }
 
 // SignUpUserAndGenerateToken util function that signs up user and generates the jwt token
-func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,name, email, password, companyID string) (string, response.Token, error) {
+func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,name, email, password, companyID string) (string, *response.Token, error) {
 
 	takenQuery, err := database.DB.Prepare("SELECT exists(SELECT 1 from users where email=$1)")
 	defer takenQuery.Close()
 	if err != nil {
-		utils.ErrorResponse(w, "Check Existing Email Error")
-		return "", response.Token{}, err
+		response.Error(w, "Check Existing Email Error")
+		return "", nil, err
 	}
 	var taken bool
 	err = takenQuery.QueryRow(email).Scan(&taken)
 	if taken{
-		utils.JSONResponse(w, http.StatusConflict, response.BasicMessage{
+		response.JSON(w, http.StatusConflict, response.BasicMessage{
 			Message: "Email Already In Use",
 		})
-		return "", response.Token{}, &userError{"Email Already In Use"}
+		return "", nil, &userError{"Email Already In Use"}
 	}
 
 	userCreateQuery, err := database.DB.Prepare(createUserSql)
 	defer userCreateQuery.Close()
 	if err != nil{
-		utils.JSONResponse(w, http.StatusConflict, response.BasicMessage{
+		response.JSON(w, http.StatusConflict, response.BasicMessage{
 			Message: "Creating User Error",
 		})
-		return "", response.Token{}, err
+		return "", nil, err
 	}
 	hashByte, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 	if err != nil {
-		utils.ErrorResponse(w, "Password Hash Error")
-		return "", response.Token{}, err
+		response.Error(w, "Password Hash Error")
+		return "", nil, err
 	}
 	var userIdString string
 	err = userCreateQuery.QueryRow(name, email, string(hashByte), companyID, approved, isHead).Scan(&userIdString)
 	if err != nil {
-		utils.ErrorResponse(w, "Create User Error")
-		return "", response.Token{}, err
+		response.Error(w, "Create User Error")
+		return "", nil, err
 	}
 	addEmployeeQuery, err := database.DB.Prepare(addEmployeeSql)
 	defer addEmployeeQuery.Close()
 	_, err = addEmployeeQuery.Exec(companyID, userIdString)
 	if err != nil {
-		utils.ErrorResponse(w, "Adding Employee Error")
-		return "", response.Token{}, err
+		response.Error(w, "Adding Employee Error")
+		return "", nil, err
 	}
 
 	tokenClaims := jwtUtil.TokenClaims{
@@ -180,18 +171,18 @@ func SignUpUserAndGenerateToken(w http.ResponseWriter, approved, isHead bool,nam
 
 	token, err := jwtUtil.GenerateToken(tokenClaims)
 	if err != nil {
-		utils.ErrorResponse(w, "Token Generation Error")
-		return "", response.Token{}, err
+		response.Error(w, "Token Generation Error")
+		return "", nil, err
 	}
 
 	newUserHTML, err := ioutil.ReadFile("assets/templates/newUser.html")
 	err = SendEmail(email, "Welcome To FromYama", string(newUserHTML), nil)
 	if err != nil {
-		utils.ErrorResponse(w, "Sending Email Error")
-		return "", response.Token{}, err
+		response.Error(w, "Sending Email Error")
+		return "", nil, err
 	}
 
-	return userIdString, response.Token{
+	return userIdString, &response.Token{
 		Raw: token,
 	}, nil
 }
@@ -201,10 +192,10 @@ func RefreshToken(w http.ResponseWriter, r *http.Request){
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	token, err := jwtUtil.GenerateToken(tokenClaims)
 	if err != nil {
-		utils.ErrorResponse(w, "Token Generation Error")
+		response.Error(w, "Token Generation Error")
 		return
 	}
-	utils.JSONResponse(w, http.StatusAccepted, response.Token{Raw: token})
+	response.JSON(w, http.StatusAccepted, response.Token{Raw: token})
 }
 
 // SendEmail util function that sends email to user
