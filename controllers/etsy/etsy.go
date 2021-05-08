@@ -194,7 +194,7 @@ func formatEtsyOrder (resp response.EtsyUnfulfilledResponse) utils.Orders{
 	for i := range resp.Results {
 		ord := utils.Order{
 			Type: "Etsy",
-			OrderID: string(i),
+			OrderID: string(rune(i)),
 		}
 		orders.Orders = append(orders.Orders, ord)
 	}
