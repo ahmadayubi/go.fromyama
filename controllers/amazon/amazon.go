@@ -35,7 +35,7 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request){
 	getTokenQuery, err := database.DB.Prepare(getAmazonTokensSql)
 	defer getTokenQuery.Close()
 	err = getTokenQuery.QueryRow(tokenClaims.CompanyID).Scan(&encryptedToken, &sellerID, &marketplace)
-	token, err := utils.Decrypt(encryptedToken)
+	token, err := utils.AESDecrypt(encryptedToken)
 	if err != nil{
 		response.Error(w, "Hash Error")
 		return
@@ -105,7 +105,7 @@ func Authorize (w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	encryptedToken, err := utils.Encrypt(body["auth_token"])
+	encryptedToken, err := utils.AESEncrypt(body["auth_token"])
 	updateAmazonQuery, err := database.DB.Prepare(updateAmazonAuthSql)
 	defer updateAmazonQuery.Close()
 	_, err = updateAmazonQuery.Exec(body["seller_id"], encryptedToken, body["marketplace"], tokenClaims.CompanyID)

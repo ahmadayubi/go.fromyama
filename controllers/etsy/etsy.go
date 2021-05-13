@@ -40,8 +40,8 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 	defer getTokenQuery.Close()
 	err = getTokenQuery.QueryRow(tokenClaims.CompanyID).Scan(&store, &encryptedToken, &encryptedSecret)
 
-	token, err := utils.Decrypt(encryptedToken)
-	tokenSecret, err := utils.Decrypt(encryptedSecret)
+	token, err := utils.AESDecrypt(encryptedToken)
+	tokenSecret, err := utils.AESDecrypt(encryptedSecret)
 	if err != nil {
 		response.Error(w, "Hash Error")
 	} else if body["tracking_number"] != "" && body["tracking_company"] != "" {
@@ -63,8 +63,8 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	defer getTokenQuery.Close()
 	err = getTokenQuery.QueryRow(tokenClaims.CompanyID).Scan(&store, &encryptedToken, &encryptedSecret)
 
-	token, err := utils.Decrypt(encryptedToken)
-	tokenSecret, err := utils.Decrypt(encryptedSecret)
+	token, err := utils.AESDecrypt(encryptedToken)
+	tokenSecret, err := utils.AESDecrypt(encryptedSecret)
 	if err != nil {
 		response.Error(w, "Hash Error")
 		return
@@ -164,8 +164,8 @@ func Callback(w http.ResponseWriter, r *http.Request){
 		response.Error(w, "Etsy Request Error")
 		return
 	}
-	pAuthToken, err := utils.Encrypt(values.Get("oauth_token"))
-	pAuthSecret, err := utils.Encrypt(values.Get("oauth_token_secret"))
+	pAuthToken, err := utils.AESEncrypt(values.Get("oauth_token"))
+	pAuthSecret, err := utils.AESEncrypt(values.Get("oauth_token_secret"))
 
 	setTokenQuery, err := database.DB.Prepare(updateEtsyTokenSql)
 	defer setTokenQuery.Close()

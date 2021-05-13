@@ -48,7 +48,7 @@ func ParseRequestBody (r *http.Request, body *map[string]string, needed []string
 	return nil
 }
 
-func Encrypt(text string) (string, error) {
+func AESEncrypt(text string) (string, error) {
 	plaintext := []byte(text)
 
 	block, err := aes.NewCipher([]byte(os.Getenv("AES_KEY")))
@@ -68,7 +68,7 @@ func Encrypt(text string) (string, error) {
 	return base64.URLEncoding.EncodeToString(ciphertext), nil
 }
 
-func Decrypt(cryptoText string) (string, error) {
+func AESDecrypt(cryptoText string) (string, error) {
 	ciphertext, _ := base64.URLEncoding.DecodeString(cryptoText)
 
 	block, err := aes.NewCipher([]byte(os.Getenv("AES_KEY")))

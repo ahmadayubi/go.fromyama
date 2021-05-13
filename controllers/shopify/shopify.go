@@ -43,7 +43,7 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 	defer getShopifyQuery.Close()
 	err = getShopifyQuery.QueryRow(tokenClaims.CompanyID).Scan(&encryptedToken, &store)
 
-	token, err := utils.Decrypt(encryptedToken)
+	token, err := utils.AESDecrypt(encryptedToken)
 	if err != nil {
 		response.Error(w, "Hash Error")
 		return
@@ -88,7 +88,7 @@ func GetLocations (w http.ResponseWriter, r *http.Request){
 	defer getShopifyQuery.Close()
 	err =getShopifyQuery.QueryRow(tokenClaims.CompanyID).Scan(&encryptedToken, &store)
 
-	token, err := utils.Decrypt(encryptedToken)
+	token, err := utils.AESDecrypt(encryptedToken)
 	if err != nil {
 		response.Error(w, "Hash Error")
 		return
@@ -119,7 +119,7 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	defer getShopifyQuery.Close()
 	err =getShopifyQuery.QueryRow(tokenClaims.CompanyID).Scan(&encryptedToken, &store)
 
-	token, err := utils.Decrypt(encryptedToken)
+	token, err := utils.AESDecrypt(encryptedToken)
 	if err != nil {
 		response.Error(w, "Hash Error")
 		return
@@ -207,7 +207,7 @@ func Callback(w http.ResponseWriter, r *http.Request){
 			return
 		}
 
-		encryptedToken, err := utils.Encrypt(jsonResp.AccessToken)
+		encryptedToken, err := utils.AESEncrypt(jsonResp.AccessToken)
 		updateShopifyTokenQuery, err := database.DB.Prepare(updateShopifyTokenSql)
 		defer updateShopifyTokenQuery.Close()
 		_, err = updateShopifyTokenQuery.Exec(shop, encryptedToken, state)
