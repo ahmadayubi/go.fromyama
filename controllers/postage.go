@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -297,7 +298,7 @@ func rateResponseToJSON (resp response.CanadaPostRatesResponse) []response.Canad
 				Gst: resp.PriceQuote[i].PriceDetails.Taxes.Gst,
 				Hst: resp.PriceQuote[i].PriceDetails.Taxes.Hst.Percent,
 				Pst: resp.PriceQuote[i].PriceDetails.Taxes.Pst,
-				Due: fmt.Sprintf("%f",due + 1.1),
+				Due: fmt.Sprintf("%f",math.Ceil(due*100)/100 + 1.1),
 				Adjustments: adjustments,
 			},
 			AmDelivery: resp.PriceQuote[i].ServiceStandard.AmDelivery,

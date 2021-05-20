@@ -247,7 +247,7 @@ func ChargePaymentAccount (w http.ResponseWriter, r *http.Request){
 		return
 	}
 	if body["amount"] == "" {
-		response.JSON(w, http.StatusBadRequest, response.BasicMessage{Message:"Missing Amount "})
+		response.JSON(w, http.StatusBadRequest, response.BasicMessage{Message:"Missing Amount"})
 		return
 	}
 	stripe.Key = os.Getenv("STRIPE_SECRET")

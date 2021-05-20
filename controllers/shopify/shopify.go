@@ -86,7 +86,7 @@ func GetLocations (w http.ResponseWriter, r *http.Request){
 
 	getShopifyQuery, err := database.DB.Prepare(getShopifyTokenSql)
 	defer getShopifyQuery.Close()
-	err =getShopifyQuery.QueryRow(tokenClaims.CompanyID).Scan(&encryptedToken, &store)
+	err = getShopifyQuery.QueryRow(tokenClaims.CompanyID).Scan(&encryptedToken, &store)
 
 	token, err := utils.AESDecrypt(encryptedToken)
 	if err != nil {
@@ -110,14 +110,14 @@ func GetLocations (w http.ResponseWriter, r *http.Request){
 }
 
 // GetUnfulfilledOrders /orders/all returns all unfulfilled orders
-// TODO: create endpoint for unfufilled orders and for fulfilled orders for shopify
+// TODO: create endpoint for unfulfilled orders and for fulfilled orders for shopify
 func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 	tokenClaims := r.Context().Value("claims").(jwtUtil.TokenClaims)
 	var encryptedToken, store string
 
 	getShopifyQuery, err := database.DB.Prepare(getShopifyTokenSql)
 	defer getShopifyQuery.Close()
-	err =getShopifyQuery.QueryRow(tokenClaims.CompanyID).Scan(&encryptedToken, &store)
+	err = getShopifyQuery.QueryRow(tokenClaims.CompanyID).Scan(&encryptedToken, &store)
 
 	token, err := utils.AESDecrypt(encryptedToken)
 	if err != nil {
@@ -151,17 +151,17 @@ func GenerateAuthURL (w http.ResponseWriter, r *http.Request){
 		response.Error(w, "Body Parse Error, " + err.Error())
 		return
 	}
-	uid := uuid.New()
+	uid := uuid.New().String()
 	updateTempQuery, err := database.DB.Prepare(updateTempUUIDSql)
 	defer updateTempQuery.Close()
-	_, err = updateTempQuery.Exec(uid.String(), tokenClaims.CompanyID)
+	_, err = updateTempQuery.Exec(uid, tokenClaims.CompanyID)
 	if err != nil {
 		response.Error(w, "Update UUID Error")
 		return
 	}
 	var url response.UrlResponse
 	url.Url = fmt.Sprintf("https://%s.myshopify.com/admin/oauth/authorize?client_id=%s&scope=read_orders,write_orders,read_customers&redirect_uri=%s/shopify/callback&state=%s&grant_options[]=",
-		body["shop"], os.Getenv("SHOP_API_KEY"), os.Getenv("BASE_URL"), uid.String())
+		body["shop"], os.Getenv("SHOP_API_KEY"), os.Getenv("BASE_URL"), uid)
 
 	response.JSON(w, http.StatusOK, url)
 }
