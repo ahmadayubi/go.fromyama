@@ -63,7 +63,7 @@ func FulfillOrder (w http.ResponseWriter, r *http.Request) {
 
 	fulfillmentJSON, err := json.Marshal(fulfillmentData)
 
-	respBody, err := shopifyRequest("POST", "https://"+store+"/admin/api/2020-10/orders/"+orderID+"/fulfillments.json", token, fulfillmentJSON)
+	respBody, err := shopifyRequest("POST", "https://"+store+"/admin/api/2021-04/orders/"+orderID+"/fulfillments.json", token, fulfillmentJSON)
 	if err != nil {
 		response.Error(w, "Shopify Request Error")
 		return
@@ -94,7 +94,7 @@ func GetLocations (w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	respBody, err := shopifyRequest("GET", "https://"+store+"/admin/api/2020-04/locations.json", token, nil)
+	respBody, err := shopifyRequest("GET", "https://"+store+"/admin/api/2021-04/locations.json", token, nil)
 	if err != nil {
 		response.Error(w, "Shopify Request Error")
 		return
@@ -125,7 +125,7 @@ func GetUnfulfilledOrders (w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respBody, err := shopifyRequest("GET", "https://"+store+"/admin/api/2020-04/orders.json?updated_at_min=2005-07-31T15:57:11-04:00&fulfillment_status=unfulfilled", token, nil)
+	respBody, err := shopifyRequest("GET", "https://"+store+"/admin/api/2021-04/orders.json?updated_at_min=2005-07-31T15:57:11-04:00&fulfillment_status=unfulfilled", token, nil)
 	if err != nil {
 		response.Error(w, "Shopify Request Error")
 		return
@@ -268,6 +268,8 @@ func shopifyRequest (method, url, token string, body []byte) ([]byte, error) {
 	}
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
 	req.Header.Add("X-Shopify-Access-Token", token)
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("User-Agent", "FromYama/2021.05.01")
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
